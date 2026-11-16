@@ -1,5 +1,119 @@
-# Eclipse Explorer
+# Eclipse Explorer 🌑🌕
 
-A 3D learning simulator that teaches kids (ages 6–8) how solar and lunar eclipses work.
+**▶ Play it now: https://codinglucas.github.io/eclipse-explorer/**
 
-🚧 Work in progress — see [PROMPT.md](PROMPT.md) for the build plan.
+A 3D learning simulator that teaches kids aged **6–8** how **solar** and **lunar eclipses** work.
+Two friendly guides, **Stella the Star** and **Captain Kai the astronaut**, walk the child through hands-on experiments. The child *makes* each eclipse by moving the Moon.
+
+> Screenshot coming soon. Add one as `docs/screenshot.png` and show it here with `![Eclipse Explorer](docs/screenshot.png)`.
+
+---
+
+## The big idea: "Who's in the middle?"
+
+Both eclipses need the Sun, Earth and Moon in a straight line. The only difference is **who is in the middle**:
+
+| | Solar eclipse | Lunar eclipse |
+|---|---|---|
+| Who's in the middle? | The **Moon** | **Earth** |
+| Whose shadow? | The Moon's shadow falls on Earth | Earth's shadow falls on the Moon |
+| Moon phase | New moon | Full moon |
+| What you see | The Sun gets covered, the sky goes dark | The Moon turns coppery red |
+| Safe to look? | **No**: only with eclipse glasses | Yes, totally safe |
+
+## What's inside
+
+- **A real 3D scene** (Three.js). The eclipses come from **real shadows**, not painted-on overlays. A dotted orbit, a starfield, and optional shadow cones and light rays as teaching aids.
+- **Move the Moon** by dragging it (mouse or touch), with the big ◀ ▶ buttons, or with the arrow keys. Close to a perfect line-up, the Moon **snaps** into place with a soft chime.
+- **See it from Earth! 🌍** A ground view in the **countryside** or the **city**:
+  - **Solar:** the Moon slides over the Sun, the sky turns to dusk, and stars and the corona appear.
+  - **Lunar:** a night sky where Earth's shadow turns the Moon red.
+- **Safety first.** Before every solar eclipse view, Captain Kai explains why you must **never look at the Sun without eclipse glasses**. The message can't be skipped for 2 seconds.
+- **Guides with speech bubbles.** One short sentence at a time, **Next ➜**, **Explore more! 🔭** for curious kids, **🔊 read-aloud** (a different voice for each guide), and a ✕ to tuck the bubble away.
+- **7 chapters**, shown as a progress bar with dots:
+  1. ☀️ Meet the family
+  2. 🔦 Light and shadows
+  3. 🌙 The Moon's trip
+  4. 🌑 Make a solar eclipse!
+  5. 🌕 Make a lunar eclipse!
+  6. ❓ Who's in the middle? A picture quiz with no fail state: wrong answers get a gentle hint, right answers get confetti.
+  7. 🎉 Free play
+- **🔭 See the real sizes!** Animates to true relative sizes and distances: a tiny Earth, a tiny far-away Moon, and a giant Sun. "Space is really, really big!"
+- **Progress is saved** in the browser, and ↺ starts over (with a grown-up check).
+- **Kid-friendly UI.** Big tap targets, the rounded Fredoka font, works on tablets (landscape and portrait) and phones, respects **reduced motion**, and has a 🔇 sound toggle.
+
+## Open it locally
+
+It's a **single `index.html` file**, with no build step and no install.
+
+1. Download or clone this repo.
+2. **Double-click `index.html`.** It opens in your browser.
+
+Notes:
+- The first time, it needs an internet connection to load Three.js and the font from a CDN.
+- Some browsers don't save progress for pages opened straight from a file (`file://`). Everything else works; the child just starts at chapter 1. To test saving locally, serve the folder with any static server, for example:
+
+  ```bash
+  python3 -m http.server 8000
+  ```
+
+  Then open http://localhost:8000.
+
+## Edit the lesson text
+
+All the words the guides say live in **one place**: the `LESSONS` section near the middle of `index.html`. You can change the text without touching any logic.
+
+### `LESSONS`: the chapters
+
+`LESSONS` is a list of chapters. Each chapter has `id`, `icon`, `title` and a list of `steps`. A step looks like this:
+
+```js
+{
+  id: "solar-task",            // unique name for the step
+  guide: "kai",                // "stella" (light things) or "kai" (being-there things)
+  text: "Who's in the middle? Put the Moon between the Sun and Earth!",  // one short sentence, max ~15 words
+  more: "Drag the Moon toward the Sun, or use the arrow buttons.",       // the "Explore more! 🔭" text
+  action: "alignSolar",        // optional: what the child must do before Next appears
+  sceneEffect: null,           // optional: e.g. "showShadowCones"
+}
+```
+
+- **Actions:** `tapBodies`, `orbitOnce`, `alignSolar`, `alignLunar`, `redMoon`, `groundSolar`, `groundLunar`. Add `optional: true` to show Next right away.
+- **Scene effects:** `showShadowCones`, `hideShadowCones`, `showLightRays`, `hideLightRays`, `moonStart`, `resetView`. One name, or a list of names.
+- **Quiz steps** (chapter 6) add a `quiz` object with `answers` (each with `picture` or `emoji`, `label` and `correct`), plus a `hint` and a `praise`.
+
+### Other text
+
+- **`SCRIPTS`:** short lines for free play, the ground view (including the solar **safety talk**) and the real-sizes moment.
+- **`BODY_FACTS`:** the one-line facts shown when the child taps the Sun, Earth or Moon in chapter 1.
+- **`TASK_TEXT`:** small labels such as "Almost! Keep going!" and "You did it! 🎉".
+
+Writing tips for ages 6–8:
+- Keep each `text` to one short sentence (15 words at most).
+- Name things ("the Moon", "Earth's shadow") instead of saying "it".
+- Save extra detail for `more`.
+
+## Code layout
+
+Everything is in `index.html`, split into clearly marked sections:
+
+`CONFIG` · `SCENE` · `BODIES` · `LIGHT & SHADOWS` · `INTERACTION` · `GUIDES` · `LESSONS` · `UI` · `MAIN LOOP`
+
+- **Tech:** vanilla JavaScript plus [Three.js](https://threejs.org/) 0.160, loaded as an ES module through an import map. No frameworks, no npm.
+- **Textures, sounds and characters** are all drawn or generated in code: canvas textures, Web Audio sound effects, and SVG guides. There are no image or audio files.
+- **Developer helper:** `window.__eclipse` in the browser console gives you shortcuts for testing, for example `__eclipse.startChapter(3)`, `__eclipse.setMoonAngle(Math.PI)` and `__eclipse.resetProgress()`.
+
+## Science notes
+
+The simulator keeps the science right while staying simple for young kids:
+
+- A solar eclipse happens at **new moon**; a lunar eclipse at **full moon**.
+- Eclipses don't happen every month because the Moon's orbit is slightly **tilted**. This is mentioned only in "Explore more".
+- The eclipsed Moon looks **red** because Earth's air bends and filters sunlight, like the light at sunset.
+- **Never look at the Sun without proper eclipse glasses.** Regular sunglasses are not enough. The app keeps this rule simple on purpose.
+- **Lunar eclipses are safe** to watch with your eyes.
+- The normal view is **not to scale** (a label says so). The 🔭 real-sizes view shows true relative sizes, with the Sun's distance squeezed to fit.
+
+## How it was built
+
+Built step by step from [PROMPT.md](PROMPT.md), with one pull request per step: scene, Moon interaction, eclipse effects, guides, lessons, quiz and free play, real sizes, and polish.
