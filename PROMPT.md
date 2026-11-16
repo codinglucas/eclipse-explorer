@@ -10,11 +10,12 @@
 All work lives on the **codinglucas** GitHub account (personal projects), **not** lucasravelino.
 
 - **Repo:** `codinglucas/eclipse-explorer` (public). If it doesn't exist yet, create it with `gh repo create codinglucas/eclipse-explorer --public --description "3D learning simulator that teaches kids (6-8) how solar and lunar eclipses work"`.
-- **Commit identity** (set locally in this repo, not globally):
+- **Commit identity** (set locally in this repo; uses the GitHub no-reply address):
   ```bash
   git config user.name "codinglucas"
   git config user.email "113028485+codinglucas@users.noreply.github.com"
   ```
+- **Never write a personal email into any file in this repo.** That includes commit messages and PR descriptions; use the no-reply address above wherever an email is needed.
 - Before pushing, confirm `gh auth status` shows the **codinglucas** account. If it shows another account, stop and ask me to switch (`gh auth switch` / `gh auth login`).
 - **First commit on `main`:** this `PROMPT.md` plus an empty `index.html` and a short `README.md` stub, with message `chore: project setup and build prompt`.
 - **Workflow for every build step in section 11:**
