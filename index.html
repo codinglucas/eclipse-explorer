@@ -69,6 +69,67 @@
       gap: 12px;
     }
 
+    #hud-bottom-center {
+      position: fixed;
+      left: 50%;
+      bottom: max(16px, env(safe-area-inset-bottom));
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .btn-arrow {
+      width: 72px;
+      height: 72px;
+      padding: 0;
+      font-size: 30px;
+      touch-action: none; /* holding the button must not scroll or zoom */
+    }
+    .btn-arrow.held { background: var(--ui-accent); transform: scale(0.94); }
+    #moon-pad-label {
+      color: #e8e2ff;
+      font-size: 18px;
+      font-weight: 600;
+      pointer-events: none;
+    }
+
+    #hud-top-right {
+      position: fixed;
+      top: max(16px, env(safe-area-inset-top));
+      right: max(16px, env(safe-area-inset-right));
+    }
+    .btn-round { width: var(--tap); padding: 0; font-size: 24px; }
+
+    /* Short status chip (the guides take this job over in step 4) */
+    #hint {
+      position: fixed;
+      top: max(18px, env(safe-area-inset-top));
+      left: 50%;
+      transform: translate(-50%, -12px);
+      padding: 12px 24px;
+      border-radius: 999px;
+      background: var(--ui-bg);
+      color: var(--ui-text);
+      font-size: 22px;
+      font-weight: 600;
+      box-shadow: var(--ui-shadow);
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+    #hint.show { opacity: 1; transform: translate(-50%, 0); }
+    #hint.aligned { background: #fff3c4; }
+
+    /* Narrower screens: keep Reset view above the Moon arrows */
+    @media (max-width: 860px) {
+      #hud-bottom-right { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 88px); }
+    }
+    @media (max-width: 560px) {
+      #moon-pad-label { display: none; }
+      #hint { font-size: 18px; padding: 10px 18px; }
+    }
+
     /* ---------- UI: labels ---------- */
     #scale-label {
       position: fixed;
@@ -104,7 +165,7 @@
     #overlay.hidden { opacity: 0; pointer-events: none; }
 
     @media (prefers-reduced-motion: reduce) {
-      .btn, #overlay { transition: none; }
+      .btn, #overlay, #hint { transition: none; }
     }
   </style>
 
@@ -121,6 +182,18 @@
   <canvas id="scene" aria-label="A 3D view of the Sun, the Earth and the Moon"></canvas>
 
   <div id="scale-label">Not to scale</div>
+
+  <div id="hint" role="status" aria-live="polite"></div>
+
+  <div id="hud-top-right">
+    <button id="btn-sound" class="btn btn-round" type="button" aria-label="Sound effects on" aria-pressed="true">🔊</button>
+  </div>
+
+  <div id="hud-bottom-center">
+    <button id="btn-moon-back" class="btn btn-arrow" type="button" aria-label="Move the Moon back">◀</button>
+    <span id="moon-pad-label">Move the Moon</span>
+    <button id="btn-moon-forward" class="btn btn-arrow" type="button" aria-label="Move the Moon forward">▶</button>
+  </div>
 
   <div id="hud-bottom-right">
     <button id="btn-reset-view" class="btn" type="button" aria-label="Reset view">🎯 Reset view</button>
@@ -160,13 +233,23 @@
       light: { sunIntensity: 2.6, ambientIntensity: 0.32 },
       camera: {
         fov: 42,
-        target: new THREE.Vector3(-3.5, 0, 0),
+        target: new THREE.Vector3(-2.5, 0, 0),
         direction: new THREE.Vector3(0.12, 0.42, 1).normalize(), // where the camera sits, seen from the target
-        fitWidth: 40,      // world units that must fit across the screen
+        fitWidth: 45,      // world units that must fit across the screen
         fitHeight: 20,
         minDistance: 18,
         maxDistance: 90,
       },
+      interaction: {
+        snapDeg: 10,          // closer than this to a perfect line-up → snap into place
+        releaseDeg: 15,       // once snapped, the Moon lets go after this much (stops jitter)
+        nearDeg: 30,          // "Almost! Keep going!" zone
+        arrowSpeedDeg: 75,    // how fast ◀ ▶ move the Moon, degrees per second
+        arrowNudgeDeg: 4,     // a quick tap still moves the Moon a little
+        followRate: 14,       // how quickly the Moon glides to where it should be
+        hitRadiusScale: 2.4,  // grab area around the Moon, bigger than the Moon for small fingers
+      },
+      glow: { color: 0xffe08a },
       reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     };
 
@@ -174,7 +257,14 @@
     //   angle = PI  → Moon is between Sun and Earth  (solar eclipse line-up)
     //   angle = 0   → Moon is behind Earth           (lunar eclipse line-up)
     const state = {
-      moonAngle: CONFIG.moon.startAngle,
+      moonAngle: CONFIG.moon.startAngle,   // where the Moon is drawn
+      rawAngle: CONFIG.moon.startAngle,    // where the child is pushing it (finger / arrows)
+      targetAngle: CONFIG.moon.startAngle, // rawAngle, or the exact line-up while snapped
+      aligned: null,                       // null | "solar" | "lunar"
+      near: null,                          // null | "solar" | "lunar"  (close, not snapped yet)
+      arrowDir: 0,                         // -1, 0, +1 while an arrow is held
+      dragging: false,
+      glow: 0,                             // 0..1 brightness of the line-up glow
     };
 
     /* =====================================================================
@@ -452,6 +542,13 @@
     moon.receiveShadow = true;
     earthSystem.add(moon);
 
+    // Invisible, larger sphere that makes the Moon easy to grab with a finger.
+    const moonHit = new THREE.Mesh(
+      new THREE.SphereGeometry(CONFIG.moon.radius * CONFIG.interaction.hitRadiusScale, 16, 12),
+      new THREE.MeshBasicMaterial({ visible: false })
+    );
+    moon.add(moonHit);
+
     function placeMoon(angle) {
       moon.position.set(
         Math.cos(angle) * CONFIG.moon.orbitRadius,
@@ -505,10 +602,219 @@
     // Soft fill so the night sides are dim, not pitch black.
     scene.add(new THREE.HemisphereLight(0xb8c4ff, 0x2a1f5c, CONFIG.light.ambientIntensity));
 
+    // Line-up glow: a soft beam along Sun → Earth → Moon that lights up on a snap.
+    // Everything lies on the x axis, so the beam is a cylinder turned to point along x.
+    const alignGlow = new THREE.Group();
+    const glowLayers = [
+      { radius: 0.07, opacity: 0.6 },  // thin core
+      { radius: 0.28, opacity: 0.16 }, // soft halo
+    ].map(({ radius, opacity }) => {
+      const mesh = new THREE.Mesh(
+        new THREE.CylinderGeometry(radius, radius, 1, 20, 1, true),
+        new THREE.MeshBasicMaterial({
+          color: CONFIG.glow.color, transparent: true, opacity: 0,
+          blending: THREE.AdditiveBlending, depthWrite: false,
+        })
+      );
+      mesh.rotation.z = Math.PI / 2;
+      mesh.userData.maxOpacity = opacity;
+      alignGlow.add(mesh);
+      return mesh;
+    });
+    alignGlow.visible = false;
+    scene.add(alignGlow);
+
+    /** Stretch the beam from the Sun's edge to the far end of the line-up. */
+    function shapeAlignGlow(type) {
+      const startX = CONFIG.sun.position.x + CONFIG.sun.radius;
+      const endX = type === "lunar"
+        ? CONFIG.earth.position.x + CONFIG.moon.orbitRadius   // through Earth, out to the Moon
+        : CONFIG.earth.position.x;                            // through the Moon, into Earth
+      const len = endX - startX;
+      glowLayers.forEach((m) => { m.scale.y = len; m.position.x = startX + len / 2; });
+    }
+
     /* =====================================================================
        INTERACTION
-       (Step 2: dragging the Moon along its orbit, ◀ ▶ buttons, snap assist.)
+       The child moves the Moon by dragging it (mouse or touch) or holding
+       the ◀ ▶ buttons / arrow keys. The Moon stays on its orbit. Close to a
+       perfect line-up it snaps into place, dings and the line-up glows.
+       Other parts of the app listen with events.addEventListener(...):
+         "alignment" → detail.type is "solar", "lunar" or null
+         "near"      → detail.type is "solar", "lunar" or null
+         "dragstart" / "dragend"
        ===================================================================== */
+    const TAU = Math.PI * 2;
+    const LINEUPS = { solar: Math.PI, lunar: 0 };
+    const deg = THREE.MathUtils.degToRad;
+    const wrapAngle = (a) => ((a % TAU) + TAU) % TAU;
+    /** Signed shortest turn from b to a, in (-PI, PI]. */
+    const angleDiff = (a, b) => { const d = wrapAngle(a - b); return d > Math.PI ? d - TAU : d; };
+
+    const events = new EventTarget();
+    const emit = (name, detail = {}) => events.dispatchEvent(new CustomEvent(name, { detail }));
+
+    // Later steps switch this off (e.g. while "real sizes" is on).
+    const interactionRules = { snapEnabled: true, moonEnabled: true };
+
+    function nearestLineup(angle) {
+      const solarOff = Math.abs(angleDiff(angle, LINEUPS.solar));
+      const lunarOff = Math.abs(angleDiff(angle, LINEUPS.lunar));
+      return solarOff < lunarOff ? { type: "solar", off: solarOff } : { type: "lunar", off: lunarOff };
+    }
+
+    function updateAlignment() {
+      const cfg = CONFIG.interaction;
+      const nearest = nearestLineup(state.rawAngle);
+
+      let aligned = state.aligned;
+      if (aligned && (aligned !== nearest.type || nearest.off > deg(cfg.releaseDeg))) aligned = null;
+      if (!aligned && interactionRules.snapEnabled && nearest.off < deg(cfg.snapDeg)) aligned = nearest.type;
+      if (!interactionRules.snapEnabled) aligned = null;
+
+      if (aligned !== state.aligned) {
+        state.aligned = aligned;
+        if (aligned) { shapeAlignGlow(aligned); Sound.ding(); }
+        emit("alignment", { type: aligned });
+      }
+
+      const near = !aligned && nearest.off < deg(cfg.nearDeg) ? nearest.type : null;
+      if (near !== state.near) {
+        state.near = near;
+        emit("near", { type: near });
+      }
+
+      state.targetAngle = aligned ? LINEUPS[aligned] : state.rawAngle;
+    }
+
+    function setRawAngle(angle) {
+      state.rawAngle = wrapAngle(angle);
+      updateAlignment();
+    }
+
+    // --- Dragging: find where the pointer meets the flat orbit plane ---
+    const raycaster = new THREE.Raycaster();
+    const pointerNdc = new THREE.Vector2();
+    const orbitPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -CONFIG.earth.position.y);
+    const planeHit = new THREE.Vector3();
+    let dragPointerId = null;
+
+    function aimRay(e) {
+      const r = canvas.getBoundingClientRect();
+      pointerNdc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+      raycaster.setFromCamera(pointerNdc, camera);
+    }
+    function pointerIsOnMoon(e) {
+      aimRay(e);
+      return raycaster.intersectObject(moonHit, false).length > 0;
+    }
+    function orbitAngleUnderPointer(e) {
+      aimRay(e);
+      if (!raycaster.ray.intersectPlane(orbitPlane, planeHit)) return null;
+      const x = planeHit.x - CONFIG.earth.position.x;
+      const z = planeHit.z - CONFIG.earth.position.z;
+      if (x * x + z * z < 0.25) return null; // right on Earth's centre: direction is unclear
+      return Math.atan2(-z, x);              // matches placeMoon(): z = -sin(angle)
+    }
+
+    // Capture phase on window runs before OrbitControls' own listener on the canvas,
+    // so grabbing the Moon never also spins the camera.
+    window.addEventListener("pointerdown", (e) => {
+      if (e.target !== canvas) return;
+      if (dragPointerId !== null) { e.stopPropagation(); return; } // ignore a 2nd finger mid-drag
+      if (!e.isPrimary || !interactionRules.moonEnabled || !pointerIsOnMoon(e)) return;
+      e.stopPropagation();
+      e.preventDefault();
+      dragPointerId = e.pointerId;
+      state.dragging = true;
+      canvas.style.cursor = "grabbing";
+      emit("dragstart");
+    }, { capture: true });
+
+    window.addEventListener("pointermove", (e) => {
+      if (e.pointerId === dragPointerId) {
+        const a = orbitAngleUnderPointer(e);
+        if (a !== null) setRawAngle(a);
+      } else if (dragPointerId === null && e.pointerType === "mouse" && e.target === canvas) {
+        canvas.style.cursor = interactionRules.moonEnabled && pointerIsOnMoon(e) ? "grab" : "";
+      }
+    });
+
+    function endDrag(e) {
+      if (e.pointerId !== dragPointerId) return;
+      dragPointerId = null;
+      state.dragging = false;
+      canvas.style.cursor = "";
+      emit("dragend");
+    }
+    window.addEventListener("pointerup", endDrag);
+    window.addEventListener("pointercancel", endDrag);
+
+    // --- ◀ ▶ buttons: tap to nudge, hold to keep moving ---
+    function bindArrow(button, dir) {
+      const release = () => {
+        button.classList.remove("held");
+        if (state.arrowDir === dir) state.arrowDir = 0;
+      };
+      button.addEventListener("pointerdown", (e) => {
+        if (!interactionRules.moonEnabled) return;
+        e.preventDefault();
+        try { button.setPointerCapture(e.pointerId); } catch { /* not a live pointer */ }
+        button.classList.add("held");
+        state.arrowDir = dir;
+        setRawAngle(state.rawAngle + dir * deg(CONFIG.interaction.arrowNudgeDeg));
+      });
+      button.addEventListener("pointerup", release);
+      button.addEventListener("pointercancel", release);
+      button.addEventListener("lostpointercapture", release);
+      // Keyboard users: Enter/Space on the focused button gives one nudge.
+      button.addEventListener("click", (e) => {
+        if (e.detail === 0 && interactionRules.moonEnabled) {
+          setRawAngle(state.rawAngle + dir * deg(CONFIG.interaction.arrowNudgeDeg * 2));
+        }
+      });
+    }
+    // ▶ moves the Moon the way the real Moon travels (counter-clockwise seen from above).
+    bindArrow(document.getElementById("btn-moon-back"), -1);
+    bindArrow(document.getElementById("btn-moon-forward"), 1);
+
+    // Arrow keys on the keyboard work too.
+    window.addEventListener("keydown", (e) => {
+      if (!interactionRules.moonEnabled) return;
+      const dir = e.key === "ArrowLeft" ? -1 : e.key === "ArrowRight" ? 1 : 0;
+      if (!dir) return;
+      e.preventDefault();
+      if (!e.repeat) setRawAngle(state.rawAngle + dir * deg(CONFIG.interaction.arrowNudgeDeg)); // a quick press still moves
+      state.arrowDir = dir;
+    });
+    window.addEventListener("keyup", (e) => {
+      if ((e.key === "ArrowLeft" && state.arrowDir === -1) || (e.key === "ArrowRight" && state.arrowDir === 1)) {
+        state.arrowDir = 0;
+      }
+    });
+    window.addEventListener("blur", () => { state.arrowDir = 0; });
+
+    /** Called every frame: arrows push the Moon, and the drawn Moon glides to its target. */
+    function updateMoon(dt) {
+      if (state.arrowDir) {
+        setRawAngle(state.rawAngle + state.arrowDir * deg(CONFIG.interaction.arrowSpeedDeg) * dt);
+      }
+      const diff = angleDiff(state.targetAngle, state.moonAngle);
+      if (Math.abs(diff) > 1e-4) {
+        const k = CONFIG.reducedMotion ? 1 : 1 - Math.exp(-CONFIG.interaction.followRate * dt);
+        state.moonAngle = wrapAngle(state.moonAngle + diff * k);
+        placeMoon(state.moonAngle);
+      }
+
+      // Fade the line-up glow in and out, with a gentle pulse while it's on.
+      const want = state.aligned ? 1 : 0;
+      state.glow += (want - state.glow) * Math.min(1, dt * (want ? 4 : 6));
+      alignGlow.visible = state.glow > 0.01;
+      if (alignGlow.visible) {
+        const pulse = CONFIG.reducedMotion ? 1 : 0.8 + 0.2 * Math.sin(clock.elapsedTime * 3);
+        glowLayers.forEach((m) => { m.material.opacity = m.userData.maxOpacity * state.glow * pulse; });
+      }
+    }
 
     /* =====================================================================
        GUIDES
@@ -522,8 +828,66 @@
 
     /* =====================================================================
        UI
-       Reset view, window resizing, loading overlay.
+       Sound effects, short status hints, reset view, window resizing,
+       loading overlay.
        ===================================================================== */
+
+    // --- Sound effects (Web Audio, no files). Audio starts only after a tap. ---
+    const Sound = {
+      ctx: null,
+      muted: false,
+      unlock() {
+        if (!this.ctx) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (!AC) return;
+          try { this.ctx = new AC(); } catch { return; }
+        }
+        if (this.ctx.state === "suspended") this.ctx.resume().catch(() => {});
+      },
+      /** Soft two-note chime. */
+      ding() {
+        if (this.muted || !this.ctx || this.ctx.state !== "running") return;
+        const t = this.ctx.currentTime;
+        [[880, 0], [1318.5, 0.09]].forEach(([freq, delay]) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0.0001, t + delay);
+          gain.gain.exponentialRampToValueAtTime(0.22, t + delay + 0.015);
+          gain.gain.exponentialRampToValueAtTime(0.0001, t + delay + 0.9);
+          osc.connect(gain).connect(this.ctx.destination);
+          osc.start(t + delay);
+          osc.stop(t + delay + 1);
+        });
+      },
+    };
+    window.addEventListener("pointerdown", () => Sound.unlock(), { capture: true });
+    window.addEventListener("keydown", () => Sound.unlock(), { capture: true });
+
+    const soundBtn = document.getElementById("btn-sound");
+    soundBtn.addEventListener("click", () => {
+      Sound.muted = !Sound.muted;
+      soundBtn.textContent = Sound.muted ? "🔇" : "🔊";
+      soundBtn.setAttribute("aria-label", Sound.muted ? "Sound effects off" : "Sound effects on");
+      soundBtn.setAttribute("aria-pressed", String(!Sound.muted));
+    });
+
+    // --- Status hint chip (Stella and Kai take over this job in step 4) ---
+    const hintEl = document.getElementById("hint");
+    const HINTS = {
+      near: "Almost! Keep going! ✨",
+      solar: "Moon in the middle! 🌑",
+      lunar: "Earth in the middle! 🌕",
+    };
+    function refreshHint() {
+      const text = state.aligned ? HINTS[state.aligned] : state.near ? HINTS.near : "";
+      if (text) hintEl.textContent = text;
+      hintEl.classList.toggle("show", Boolean(text));
+      hintEl.classList.toggle("aligned", Boolean(state.aligned));
+    }
+    events.addEventListener("alignment", refreshHint);
+    events.addEventListener("near", refreshHint);
     let cameraTween = null; // { from, to, fromTarget, t }
     let cameraIsHome = true; // false once the child moves the camera themselves
 
@@ -564,7 +928,12 @@
 
     // Tiny hook for testing from the browser console during development.
     window.__eclipse = {
-      setMoonAngle(a) { state.moonAngle = a; placeMoon(a); },
+      /** Jump the Moon straight to an angle (radians; PI = solar line-up, 0 = lunar). */
+      setMoonAngle(a) { setRawAngle(a); state.moonAngle = state.targetAngle; placeMoon(state.moonAngle); },
+      /** Push the Moon like a finger would (snapping applies). */
+      pushMoon(a) { setRawAngle(a); },
+      get state() { return { ...state }; },
+      events,
       THREE, scene, camera, renderer, controls, homeCameraPosition,
     };
 
@@ -579,6 +948,7 @@
       const t = clock.elapsedTime;
 
       earth.rotation.y += dt * CONFIG.earth.spinSpeed;
+      updateMoon(dt);
 
       if (!CONFIG.reducedMotion) {
         sunGlow.scale.setScalar(CONFIG.sun.glowSize * (1 + Math.sin(t * 1.6) * 0.025));
