@@ -529,6 +529,72 @@
       #task-chip .meter { width: 90px; }
     }
 
+    /* ---------- Quiz (chapter 6) ---------- */
+    #quiz {
+      position: fixed;
+      z-index: 35;
+      left: 50%;
+      top: calc(max(16px, env(safe-area-inset-top)) + 128px);
+      transform: translateX(-50%);
+      width: min(640px, calc(100vw - 32px));
+      padding: 14px 16px 16px;
+      border-radius: 26px;
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      text-align: center;
+      animation: bubble-in 0.35s ease-out;
+    }
+    #quiz[hidden] { display: none; }
+    .quiz-count { margin-bottom: 10px; font-size: 16px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #8a7fc4; }
+    .quiz-answers { display: flex; justify-content: center; gap: 12px; }
+    .quiz-answer {
+      flex: 1 1 0;
+      min-width: 0;
+      max-width: 250px;
+      min-height: 140px;
+      padding: 10px;
+      border: 4px solid #e4defa;
+      border-radius: 22px;
+      background: #fff;
+      color: var(--ui-text);
+      font: 700 19px/1.2 "Fredoka", system-ui, sans-serif;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: transform 0.12s ease, opacity 0.25s ease;
+    }
+    .quiz-answer:active { transform: scale(0.95); }
+    .quiz-answer:focus-visible { outline: 4px solid var(--ui-accent); outline-offset: 3px; }
+    .quiz-answer svg { width: 100%; height: auto; display: block; }
+    .quiz-answer .big-emoji { font-size: 56px; line-height: 1; }
+    .quiz-answer.wrong { opacity: 0.45; animation: shake 0.4s ease; cursor: default; }
+    .quiz-answer.right { border-color: #3fb15a; background: #d9f7df; animation: pop 0.4s ease; }
+    .quiz-answers.solved .quiz-answer:not(.right) { opacity: 0.35; }
+    @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+    @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.08); } 100% { transform: scale(1); } }
+    #confetti { position: fixed; inset: 0; z-index: 45; width: 100%; height: 100%; pointer-events: none; }
+
+    /* Free play button (shows once free play is unlocked) */
+    #btn-free-play { background: #fff3c4; border: 3px solid var(--ui-accent); }
+    #btn-free-play[hidden] { display: none; }
+
+    @media (max-width: 1000px) {
+      #quiz { top: calc(max(16px, env(safe-area-inset-top)) + 196px); }
+    }
+    @media (max-width: 560px) {
+      #quiz { padding: 10px; }
+      .quiz-answers { gap: 8px; }
+      .quiz-answer { min-height: 104px; padding: 6px; font-size: 15px; border-width: 3px; }
+      .quiz-answer .big-emoji { font-size: 42px; }
+      #btn-free-play .label { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .quiz-answer.wrong, .quiz-answer.right, #quiz { animation: none; }
+    }
+
     /* ---------- UI: labels ---------- */
     #scale-label {
       position: fixed;
@@ -586,6 +652,12 @@
 
   <div id="fact-labels" aria-live="polite"></div>
 
+  <div id="quiz" role="group" aria-labelledby="quiz-count" hidden>
+    <div class="quiz-count" id="quiz-count"></div>
+    <div class="quiz-answers" id="quiz-answers"></div>
+  </div>
+  <canvas id="confetti" aria-hidden="true"></canvas>
+
   <nav id="progress" aria-label="Chapters" hidden>
     <ol id="progress-dots"></ol>
     <div id="progress-title"></div>
@@ -593,6 +665,7 @@
   </nav>
 
   <div id="hud-top-right">
+    <button id="btn-free-play" class="btn" type="button" aria-label="Free play" hidden>🎉 <span class="label">Free play</span></button>
     <button id="btn-cones" class="btn btn-toggle" type="button" aria-pressed="false">🔦 Shadows</button>
     <button id="btn-sound" class="btn btn-round" type="button" aria-label="Sound effects on" aria-pressed="true">🔊</button>
   </div>
@@ -1750,8 +1823,21 @@
         const line = currentLine();
         if (!line) return;
         if (minimized) { updateShowButton(true); return; }
-        showGuide(line.guide, () => renderLine(line));
+        showGuide(line.guide, () => { renderLine(line); armAutoHide(); });
       }
+
+      // Brief bubbles (free play) slip away by themselves unless the child touches them.
+      let autoTimer = null;
+      function armAutoHide() {
+        clearTimeout(autoTimer);
+        if (!seq || !seq.autoHideMs || seq.touched) return;
+        const s = seq;
+        autoTimer = setTimeout(() => { if (seq === s && !s.touched) { finish(false); hideDock(); } }, s.autoHideMs);
+      }
+      dock.addEventListener("pointerdown", () => {
+        if (seq) seq.touched = true;
+        clearTimeout(autoTimer);
+      });
 
       function updateShowButton(hasNew = false) {
         const line = currentLine();
@@ -1783,6 +1869,7 @@
       function finish(result) {
         const s = seq;
         seq = null;
+        clearTimeout(autoTimer);
         minimized = false;
         updateShowButton();
         if (s) s.resolve(result);
@@ -1816,12 +1903,12 @@
       });
 
       return {
-        say(lines, { tag = null } = {}) {
+        say(lines, { tag = null, autoHideMs = 0 } = {}) {
           clearTimeout(quickTimer);
           if (seq) finish(false);
           minimized = false; // something new to say brings the guide back
           return new Promise((resolve) => {
-            seq = { lines: [...lines], index: 0, resolve, tag };
+            seq = { lines: [...lines], index: 0, resolve, tag, autoHideMs, touched: false };
             showCurrent();
           });
         },
@@ -1980,10 +2067,93 @@
             more: "Solar eclipse: the Moon is in the middle. Lunar eclipse: Earth is in the middle." },
         ],
       },
-      // Chapters 6 (recap quiz) and 7 (free play) arrive in build step 6.
-      { id: "quiz", icon: "❓", title: "Who's in the middle?", comingSoon: true, steps: [] },
-      { id: "free", icon: "🎉", title: "Free play", comingSoon: true, steps: [] },
+      {
+        id: "quiz", icon: "❓", title: "Who's in the middle?",
+        setup: ["hideShadowCones", "hideLightRays"],
+        // A quiz step shows big picture answers. No fail state: a wrong answer
+        // gets a gentle hint and another try; the right one gets confetti.
+        steps: [
+          { id: "quiz-intro", guide: "kai", text: "Quiz time! Let's play Who's in the middle?",
+            more: "There's no wrong way to play. If you miss, just try again!" },
+          { id: "quiz-solar", guide: "kai", text: "Which picture shows a solar eclipse?",
+            more: "Tip: in a solar eclipse, the Sun gets covered. Which ball could cover the Sun?",
+            quiz: {
+              answers: [
+                { picture: "diagramLunar", label: "", correct: false, alt: "Sun, Earth, Moon in a line" },
+                { picture: "diagramSolar", label: "", correct: true, alt: "Sun, Moon, Earth in a line" },
+              ],
+              hint: "Look again! In a solar eclipse, the Moon is in the middle.",
+              praise: "Yes! The Moon is in the middle! 🎉",
+            } },
+          { id: "quiz-lunar", guide: "kai", text: "Which picture shows a lunar eclipse?",
+            more: "Tip: in a lunar eclipse, the Moon goes into a big shadow. Whose shadow is big enough?",
+            quiz: {
+              answers: [
+                { picture: "diagramLunar", label: "", correct: true, alt: "Sun, Earth, Moon in a line" },
+                { picture: "diagramSolar", label: "", correct: false, alt: "Sun, Moon, Earth in a line" },
+              ],
+              hint: "Try the other one! In a lunar eclipse, Earth is in the middle.",
+              praise: "Yes! Earth is in the middle! 🎉",
+            } },
+          { id: "quiz-safe", guide: "kai", text: "Is it safe to look at a lunar eclipse?",
+            more: "Tip: a lunar eclipse happens at night, and the Moon is not too bright.",
+            quiz: {
+              answers: [
+                { emoji: "👍", label: "Yes!", correct: true },
+                { emoji: "👎", label: "No", correct: false },
+              ],
+              hint: "Actually, yes! Watching the red Moon is safe for your eyes.",
+              praise: "Right! A lunar eclipse is safe to watch! 🎉",
+            } },
+          { id: "quiz-glasses", guide: "kai", text: "What should you wear to look at a solar eclipse?",
+            more: "Tip: the Sun is super bright, even when the Moon covers most of the Sun.",
+            quiz: {
+              answers: [
+                { picture: "sunglasses", label: "Sunglasses", correct: false },
+                { picture: "eclipseGlasses", label: "Eclipse glasses", correct: true },
+                { emoji: "👀", label: "Just my eyes", correct: false },
+              ],
+              hint: "Not quite! Only special eclipse glasses keep your eyes safe.",
+              praise: "Yes! Eclipse glasses keep your eyes safe! 🎉",
+            } },
+          { id: "quiz-done", guide: "kai", text: "You're an eclipse expert! Free play is unlocked! 🎉",
+            more: "In free play, move the Moon anywhere and make eclipses whenever you like." },
+        ],
+      },
+      // Not a lesson: the place where the child explores freely once the quiz is done.
+      { id: "free", icon: "🎉", title: "Free play", freePlay: true, steps: [] },
     ];
+
+    // Pictures for quiz answers (drawn here so there are no image files).
+    function diagramSVG(kind) {
+      const solar = kind === "solar";
+      const earthX = solar ? 156 : 110, moonX = solar ? 102 : 168;
+      const shadow = solar
+        ? `<polygon points="${moonX},37 ${earthX - 15},42 ${earthX - 15},48 ${moonX},53" fill="#120b2e" opacity="0.6"/><circle cx="${earthX - 13}" cy="45" r="4" fill="#120b2e" opacity="0.7"/>`
+        : `<polygon points="${earthX},28 200,33 200,57 ${earthX},62" fill="#120b2e" opacity="0.6"/>`;
+      return `<svg viewBox="0 0 200 90" aria-hidden="true">
+        <rect width="200" height="90" rx="14" fill="#1e1650"/>
+        <circle cx="20" cy="45" r="34" fill="#ffd23f" opacity="0.25"/>
+        <circle cx="20" cy="45" r="24" fill="#ffd23f"/>
+        <circle cx="${earthX}" cy="45" r="17" fill="#3a8dde"/>
+        <path d="M${earthX - 9} ${38} q7 -5 12 1 q-2 8 -10 7 z M${earthX + 2} ${50} q6 -2 8 3 q-5 4 -9 1 z" fill="#3fb15a"/>
+        ${shadow}
+        <circle cx="${moonX}" cy="45" r="8" fill="${solar ? "#a7a3b3" : "#c0552f"}"/>
+      </svg>`;
+    }
+    const QUIZ_PICTURES = {
+      diagramSolar: () => diagramSVG("solar"),
+      diagramLunar: () => diagramSVG("lunar"),
+      eclipseGlasses: () => ICONS.glasses,
+      sunglasses: () => `<svg viewBox="0 0 220 100" aria-hidden="true">
+        <path d="M14 40 L2 26" stroke="#2b2b33" stroke-width="7" stroke-linecap="round"/>
+        <path d="M206 40 L218 26" stroke="#2b2b33" stroke-width="7" stroke-linecap="round"/>
+        <path d="M96 52 Q110 40 124 52" stroke="#2b2b33" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <rect x="10" y="32" width="88" height="54" rx="24" fill="#5a6488" stroke="#2b2b33" stroke-width="7"/>
+        <rect x="122" y="32" width="88" height="54" rx="24" fill="#5a6488" stroke="#2b2b33" stroke-width="7"/>
+        <ellipse cx="38" cy="48" rx="12" ry="6" fill="#fff" opacity="0.4"/>
+        <ellipse cx="150" cy="48" rx="12" ry="6" fill="#fff" opacity="0.4"/></svg>`,
+    };
 
     // One-line facts shown when the child taps a body in chapter 1.
     const BODY_FACTS = {
@@ -1996,6 +2166,7 @@
       orbitOnce: "🌙 Moon trip",
       almost: "Almost! Keep going! ✨",
       done: "You did it! 🎉",
+      quizCount: (n, total) => `Question ${n} of ${total}`,
     };
 
     /* ---------- Short scripts for free exploration and the ground view ---------- */
@@ -2030,6 +2201,22 @@
         { guide: "kai", text: "Wow! The sky got dark in the daytime, and the stars came out!",
           more: "The glowing ring is the corona, the Sun's super-hot outer air. Birds and animals often think evening has come and get ready for bed!" },
       ],
+      freeStart: [
+        { guide: "kai", text: "Free play! Move the Moon and make any eclipse you like.",
+          more: "Try the 🔦 Shadows button, and tap See it from Earth! when the Moon clicks into place." },
+      ],
+      freeSolar: [
+        { guide: "kai", text: "Solar eclipse! The Moon is in the middle.",
+          more: "The Moon's shadow falls on Earth. People inside that shadow see the Sun get covered." },
+      ],
+      freeLunar: [
+        { guide: "kai", text: "Lunar eclipse! Earth is in the middle.",
+          more: "Earth's shadow covers the Moon. Keep watching: the Moon will turn red!" },
+      ],
+      freeRed: [
+        { guide: "stella", text: "The Moon turned red, like a sunset!",
+          more: "Earth's air bends a little red sunlight onto the Moon. That's why the Moon glows red instead of going dark." },
+      ],
       lunarSafe: [
         { guide: "kai", text: "Watching a lunar eclipse is safe. You don't need glasses!",
           more: "A lunar eclipse happens at night and can last more than an hour. Binoculars make the red Moon look even cooler!" },
@@ -2050,15 +2237,119 @@
       token: 0,                      // ignores answers from an older bubble
     };
     const reactions = { enabled: true }; // free-exploration reactions, off during lessons
+    const freePlay = { active: false, unlocked: false };
 
     const progressEl = document.getElementById("progress");
     const dotsEl = document.getElementById("progress-dots");
     const titleEl = document.getElementById("progress-title");
     const chipEl = document.getElementById("task-chip");
     const labelsEl = document.getElementById("fact-labels");
+    const quizEl = document.getElementById("quiz");
+    const quizAnswersEl = document.getElementById("quiz-answers");
+    const quizCountEl = document.getElementById("quiz-count");
+    const freePlayBtn = document.getElementById("btn-free-play");
+    freePlayBtn.addEventListener("click", () => startFreePlay());
 
-    const playableChapters = () => LESSONS.filter((c) => !c.comingSoon).length;
+    // --- Saved progress (works fine without storage, e.g. in a private window) ---
+    const PROGRESS_KEY = "eclipse-explorer.progress";
+    function saveProgress() {
+      try {
+        localStorage.setItem(PROGRESS_KEY, JSON.stringify({
+          completed: [...lesson.completed].map((i) => LESSONS[i].id),
+          current: lesson.active ? LESSONS[lesson.chapter].id : null,
+          freePlay: freePlay.unlocked,
+        }));
+      } catch { /* storage blocked: progress just isn't remembered */ }
+    }
+    function loadProgress() {
+      try { return JSON.parse(localStorage.getItem(PROGRESS_KEY)) || null; } catch { return null; }
+    }
+    function resetProgress() {
+      try { localStorage.removeItem(PROGRESS_KEY); } catch { /* fine */ }
+      lesson.completed.clear();
+      freePlay.unlocked = false;
+      freePlay.active = false;
+      startChapter(0);
+    }
+
+    // --- Quiz ---
+    const quizSteps = (c) => c.steps.filter((st) => st.quiz);
+    function hideQuiz() { quizEl.hidden = true; quizAnswersEl.replaceChildren(); }
+    function renderQuiz(step) {
+      const all = quizSteps(LESSONS[lesson.chapter]);
+      quizCountEl.textContent = TASK_TEXT.quizCount(all.indexOf(step) + 1, all.length);
+      quizAnswersEl.classList.toggle("solved", lesson.done);
+      quizAnswersEl.replaceChildren(...step.quiz.answers.map((a) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "quiz-answer";
+        if (a.picture) b.insertAdjacentHTML("beforeend", QUIZ_PICTURES[a.picture]());
+        if (a.emoji) b.insertAdjacentHTML("beforeend", `<span class="big-emoji" aria-hidden="true">${a.emoji}</span>`);
+        if (a.label) b.insertAdjacentHTML("beforeend", `<span>${a.label}</span>`);
+        b.setAttribute("aria-label", a.alt || a.label);
+        if (lesson.done && a.correct) b.classList.add("right");
+        b.addEventListener("click", () => answerQuiz(step, a, b));
+        return b;
+      }));
+      quizEl.hidden = false;
+    }
+    function answerQuiz(step, answer, button) {
+      if (lesson.done || button.classList.contains("wrong")) return;
+      if (answer.correct) {
+        button.classList.add("right");
+        quizAnswersEl.classList.add("solved");
+        Sound.cheer();
+        confetti();
+        lesson.done = true;
+        Guides.allowNext();
+        Guides.cheer(step.quiz.praise, 0);
+        emit("quizanswer", { id: step.id, correct: true });
+      } else {
+        button.classList.add("wrong");
+        button.setAttribute("aria-disabled", "true");
+        Sound.boop();
+        Guides.cheer(step.quiz.hint, 0); // gentle hint, then another try
+        emit("quizanswer", { id: step.id, correct: false });
+      }
+    }
+
+    // --- Confetti (skipped with reduced motion) ---
+    const confettiCanvas = document.getElementById("confetti");
+    const confettiCtx = confettiCanvas.getContext("2d");
+    let confettiBits = [], confettiRunning = false;
+    function confetti() {
+      if (CONFIG.reducedMotion) return;
+      const w = (confettiCanvas.width = window.innerWidth), h = (confettiCanvas.height = window.innerHeight);
+      const colors = ["#ffd23f", "#ff8fab", "#7bd389", "#7fc8ff", "#b9a7ff", "#ff9f43"];
+      for (let i = 0; i < 140; i++) {
+        confettiBits.push({
+          x: w / 2 + (Math.random() - 0.5) * w * 0.3, y: h * 0.35,
+          vx: (Math.random() - 0.5) * 14, vy: -6 - Math.random() * 10,
+          r: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.4,
+          s: 7 + Math.random() * 7, c: colors[i % colors.length], life: 0,
+        });
+      }
+      if (!confettiRunning) { confettiRunning = true; requestAnimationFrame(confettiFrame); }
+    }
+    function confettiFrame() {
+      const w = confettiCanvas.width, h = confettiCanvas.height;
+      confettiCtx.clearRect(0, 0, w, h);
+      confettiBits = confettiBits.filter((b) => b.y < h + 20 && b.life < 240);
+      confettiBits.forEach((b) => {
+        b.life++; b.vy += 0.35; b.vx *= 0.99; b.x += b.vx; b.y += b.vy; b.r += b.vr;
+        confettiCtx.save();
+        confettiCtx.translate(b.x, b.y);
+        confettiCtx.rotate(b.r);
+        confettiCtx.fillStyle = b.c;
+        confettiCtx.fillRect(-b.s / 2, -b.s / 4, b.s, b.s / 2);
+        confettiCtx.restore();
+      });
+      if (confettiBits.length) requestAnimationFrame(confettiFrame);
+      else { confettiRunning = false; confettiCtx.clearRect(0, 0, w, h); }
+    }
+
     const currentStep = () => LESSONS[lesson.chapter].steps[lesson.step];
+    const freePlayIndex = () => LESSONS.findIndex((c) => c.freePlay);
 
     function applyEffects(effects) {
       [].concat(effects || []).forEach((fx) => {
@@ -2086,12 +2377,14 @@
         b.className = "chapter-dot";
         b.textContent = c.icon;
         const done = lesson.completed.has(i);
-        const current = lesson.active && i === lesson.chapter;
+        const current = c.freePlay ? freePlay.active : lesson.active && i === lesson.chapter;
         b.classList.toggle("done", done);
         b.classList.toggle("current", current);
         // You can go back to any chapter you finished (or restart the one you're in).
-        b.disabled = c.comingSoon || !(done || current);
-        b.setAttribute("aria-label", `Chapter ${i + 1}: ${c.title}${c.comingSoon ? " (coming soon)" : done ? " (done)" : ""}`);
+        // Free play opens once the quiz is done.
+        const locked = c.freePlay ? !freePlay.unlocked : !(done || current);
+        b.disabled = locked;
+        b.setAttribute("aria-label", `${c.freePlay ? "" : `Chapter ${i + 1}: `}${c.title}${locked ? " (locked)" : done ? " (done)" : ""}`);
         if (current) b.setAttribute("aria-current", "step");
         b.title = b.getAttribute("aria-label");
         b.addEventListener("click", () => startChapter(i));
@@ -2099,8 +2392,10 @@
         return li;
       }));
       const c = LESSONS[lesson.chapter];
-      titleEl.textContent = lesson.active ? `${lesson.chapter + 1} · ${c.title}` : "You finished the lessons! 🎉";
+      titleEl.textContent = lesson.active ? `${lesson.chapter + 1} · ${c.title}`
+        : freePlay.active ? "🎉 Free play" : "You finished the lessons! 🎉";
       progressEl.hidden = false;
+      freePlayBtn.hidden = !(freePlay.unlocked && !freePlay.active);
     }
 
     function setChip(html, done = false) {
@@ -2172,19 +2467,21 @@
         applyEffects(step.sceneEffect);
       }
       refreshTaskUI();
+      if (step.quiz) renderQuiz(step); else hideQuiz();
       const token = ++lesson.token;
       const actions = [];
       if (step.action === "groundSolar") actions.push({ label: "See it from Earth! 🌍", onClick: () => openGroundView("solar") });
       if (step.action === "groundLunar") actions.push({ label: "See it from Earth! 🌍", onClick: () => openGroundView("lunar") });
       const line = {
         guide: step.guide, text: step.text, more: step.more, icon: step.icon, lockSeconds: step.lockSeconds,
-        next: !step.action || step.optional || lesson.done,
+        next: (!step.action && !step.quiz) || step.optional || lesson.done,
         actions,
       };
       Guides.say([line], { tag: "lesson" }).then((finished) => {
         if (finished && token === lesson.token && lesson.active) advance();
       });
       if (lesson.done && step.action && !step.optional) Guides.cheer(TASK_TEXT.done, 0);
+      if (lesson.done && step.quiz) Guides.cheer(step.quiz.praise, 0);
     }
 
     function advance() {
@@ -2193,15 +2490,20 @@
       // Chapter finished
       lesson.completed.add(lesson.chapter);
       clearFacts();
+      hideQuiz();
       emit("chapterdone", { chapter: lesson.chapter, id: LESSONS[lesson.chapter].id });
-      if (lesson.chapter + 1 < playableChapters()) startChapter(lesson.chapter + 1);
+      const next = LESSONS[lesson.chapter + 1];
+      if (next && next.freePlay) { freePlay.unlocked = true; startFreePlay({ greet: false }); }
+      else if (next) startChapter(lesson.chapter + 1);
       else endLessons();
+      saveProgress();
     }
 
     function startChapter(i) {
       const c = LESSONS[i];
-      if (!c || c.comingSoon) return;
-      if (ground.open) return;
+      if (!c || ground.open) return;
+      if (c.freePlay) { startFreePlay(); return; }
+      freePlay.active = false;
       lesson.active = true;
       reactions.enabled = false;
       lesson.chapter = i;
@@ -2211,7 +2513,26 @@
       applyEffects(c.setup);
       renderProgress();
       emit("chapterstart", { chapter: i, id: c.id });
+      saveProgress();
       runStep();
+    }
+
+    /** Free play: move the Moon anywhere; the guides only pop up briefly when an eclipse happens. */
+    function startFreePlay({ greet = true } = {}) {
+      if (!freePlay.unlocked || ground.open) return;
+      lesson.active = false;
+      lesson.token++;                 // ignore any lesson bubble still on screen
+      freePlay.active = true;
+      reactions.enabled = true;
+      hideQuiz();
+      setChip("");
+      clearFacts();
+      applyEffects(["hideLightRays"]);
+      renderProgress();
+      saveProgress();
+      if (greet) Guides.say(SCRIPTS.freeStart, { tag: "free", autoHideMs: 7000 });
+      else Guides.hide();
+      emit("freeplay", { on: true });
     }
 
     function endLessons() {
@@ -2219,11 +2540,25 @@
       reactions.enabled = true;
       setChip("");
       clearFacts();
+      hideQuiz();
       renderProgress();
       emit("lessonsdone");
     }
 
-    function startLessons() { startChapter(0); }
+    /** On load: pick up where the child left off (or start at chapter 1). */
+    function startLessons() {
+      const saved = loadProgress();
+      if (!saved) { startChapter(0); return; }
+      (saved.completed || []).forEach((id) => {
+        const i = LESSONS.findIndex((c) => c.id === id);
+        if (i >= 0) lesson.completed.add(i);
+      });
+      freePlay.unlocked = Boolean(saved.freePlay);
+      const resume = LESSONS.findIndex((c) => c.id === saved.current);
+      if (resume >= 0) startChapter(resume);
+      else if (freePlay.unlocked) startFreePlay();
+      else startChapter(Math.max(0, LESSONS.findIndex((c, i) => !c.freePlay && !lesson.completed.has(i))));
+    }
 
     // --- What the child does → lesson actions ---
     const onAction = (fn) => (e) => {
@@ -2276,14 +2611,20 @@
         if (String(Guides.tag).startsWith("align")) Guides.hide();
         return;
       }
-      const lines = (type === "solar" ? SCRIPTS.alignSolar : SCRIPTS.alignLunar).map((l) => ({
+      const script = freePlay.active
+        ? (type === "solar" ? SCRIPTS.freeSolar : SCRIPTS.freeLunar)
+        : (type === "solar" ? SCRIPTS.alignSolar : SCRIPTS.alignLunar);
+      const lines = script.map((l) => ({
         ...l,
         actions: [{ label: "See it from Earth! 🌍", onClick: () => openGroundView(type) }],
       }));
-      Guides.say(lines, { tag: `align-${type}` });
+      // In free play the guide only pops up briefly (stays if the child touches the bubble).
+      Guides.say(lines, { tag: `align-${type}`, autoHideMs: freePlay.active ? 8000 : 0 });
     });
     events.addEventListener("redmoon", (e) => {
-      if (reactions.enabled && e.detail.on && !ground.open) Guides.enqueue(SCRIPTS.redMoon, { tag: "redmoon" });
+      if (!reactions.enabled || !e.detail.on || ground.open) return;
+      if (freePlay.active) Guides.say(SCRIPTS.freeRed, { tag: "redmoon", autoHideMs: 8000 });
+      else Guides.enqueue(SCRIPTS.redMoon, { tag: "redmoon" });
     });
     // The ground view always narrates its big moments, in lessons and in free exploration.
     events.addEventListener("groundphase", (e) => {
@@ -2331,6 +2672,40 @@
         src.connect(filter).connect(gain).connect(ctx.destination);
         src.start(t);
         src.stop(t + dur);
+      },
+      /** Happy rising arpeggio for a right answer. */
+      cheer() {
+        if (this.muted || !this.ctx || this.ctx.state !== "running") return;
+        const t = this.ctx.currentTime;
+        [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = "triangle";
+          osc.frequency.value = freq;
+          const t0 = t + i * 0.1;
+          gain.gain.setValueAtTime(0.0001, t0);
+          gain.gain.exponentialRampToValueAtTime(0.18, t0 + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, t0 + (i === 3 ? 0.7 : 0.25));
+          osc.connect(gain).connect(this.ctx.destination);
+          osc.start(t0);
+          osc.stop(t0 + 0.8);
+        });
+      },
+      /** Soft, friendly "try again" boop (never a buzzer). */
+      boop() {
+        if (this.muted || !this.ctx || this.ctx.state !== "running") return;
+        const t = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(380, t);
+        osc.frequency.exponentialRampToValueAtTime(290, t + 0.18);
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.1, t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
+        osc.connect(gain).connect(this.ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.3);
       },
       /** Soft two-note chime. */
       ding() {
@@ -2682,6 +3057,8 @@
       setGroundScene,
       Guides, SCRIPTS, reactions, LESSONS, startChapter,
       get lesson() { return { ...lesson, completed: [...lesson.completed] }; },
+      get freePlay() { return { ...freePlay }; },
+      startFreePlay, resetProgress, saveProgress,
       tapBody(body) { emit("bodytap", { body }); },
       events,
       THREE, scene, camera, renderer, controls, homeCameraPosition,
