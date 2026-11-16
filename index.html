@@ -97,6 +97,151 @@
       position: fixed;
       top: max(16px, env(safe-area-inset-top));
       right: max(16px, env(safe-area-inset-right));
+      display: flex;
+      gap: 12px;
+    }
+    .btn[aria-pressed="true"].btn-toggle { background: var(--ui-accent); }
+
+    .btn-big {
+      min-height: 68px;
+      padding: 0 30px;
+      font-size: 26px;
+      font-weight: 700;
+    }
+    #btn-ground {
+      position: fixed;
+      left: 50%;
+      bottom: calc(max(16px, env(safe-area-inset-bottom)) + 92px);
+      transform: translateX(-50%);
+      background: var(--ui-accent);
+      white-space: nowrap;
+      animation: pop-in 0.35s ease-out;
+    }
+    #btn-ground:active { transform: translateX(-50%) scale(0.94); }
+    #btn-ground[hidden] { display: none; }
+    @keyframes pop-in {
+      from { opacity: 0; transform: translateX(-50%) scale(0.7); }
+      to   { opacity: 1; transform: translateX(-50%) scale(1); }
+    }
+
+    /* ---------- Ground view (what people on Earth see) ---------- */
+    #ground {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      background: #0d1238;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.5s ease, visibility 0s linear 0.5s;
+    }
+    #ground.open { opacity: 1; visibility: visible; transition: opacity 0.5s ease; }
+    #ground-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    #ground-top {
+      position: absolute;
+      top: max(16px, env(safe-area-inset-top));
+      left: max(16px, env(safe-area-inset-left));
+      right: max(16px, env(safe-area-inset-right));
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    .chip {
+      padding: 10px 20px;
+      border-radius: 999px;
+      background: var(--ui-bg);
+      color: var(--ui-text);
+      font-size: 20px;
+      font-weight: 600;
+      box-shadow: var(--ui-shadow);
+    }
+    #ground-note {
+      position: absolute;
+      left: 50%;
+      bottom: calc(max(16px, env(safe-area-inset-bottom)) + 168px);
+      transform: translateX(-50%);
+      max-width: calc(100% - 32px);
+      text-align: center;
+      font-size: 22px;
+    }
+    #ground-note[hidden], #btn-replay[hidden], #ground-top[hidden] { display: none; }
+
+    /* Countryside / City switch, just above "Watch again" */
+    #scene-switch {
+      position: absolute;
+      left: 50%;
+      bottom: calc(max(16px, env(safe-area-inset-bottom)) + 80px);
+      transform: translateX(-50%);
+      display: flex;
+      gap: 6px;
+      padding: 6px;
+      border-radius: 999px;
+      background: var(--ui-bg);
+      box-shadow: var(--ui-shadow);
+    }
+    #scene-switch button {
+      min-height: 56px;
+      padding: 0 20px;
+      border: none;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--ui-text);
+      font: 600 20px/1 "Fredoka", system-ui, sans-serif;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    #scene-switch button[aria-pressed="true"] { background: var(--ui-accent); }
+    #scene-switch button:focus-visible { outline: 4px solid var(--ui-accent); outline-offset: 2px; }
+    #btn-replay {
+      position: absolute;
+      left: 50%;
+      bottom: max(16px, env(safe-area-inset-bottom));
+      transform: translateX(-50%);
+    }
+    #btn-replay:active { transform: translateX(-50%) scale(0.94); }
+
+    /* Safety card: can't be closed for the first 2 seconds */
+    #safety {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: rgba(13, 18, 56, 0.45);
+    }
+    #safety[hidden] { display: none; }
+    #safety .card {
+      width: min(520px, 100%);
+      padding: 28px 28px 24px;
+      border-radius: 28px;
+      background: #fff;
+      color: var(--ui-text);
+      text-align: center;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    }
+    #safety svg { width: 150px; height: auto; }
+    #safety p { margin: 10px 0 12px; font-size: 28px; font-weight: 700; line-height: 1.2; }
+    #safety p.why { margin: 0 0 20px; font-size: 19px; font-weight: 500; line-height: 1.35; color: #4a3f80; }
+    #btn-safety-ok { position: relative; overflow: hidden; background: #ffe08a; }
+    #btn-safety-ok:disabled { cursor: default; color: rgba(42, 31, 92, 0.45); background: #f1eef9; }
+    #btn-safety-ok .lock-bar {
+      position: absolute;
+      left: 0; bottom: 0;
+      height: 6px;
+      width: 0;
+      background: var(--ui-accent);
+    }
+    #btn-safety-ok.locking .lock-bar { width: 100%; transition: width 2s linear; }
+    #btn-safety-ok:not(:disabled) .lock-bar { display: none; }
+
+    @media (max-width: 560px) {
+      #btn-ground { font-size: 22px; padding: 0 22px; }
+      #safety p { font-size: 23px; }
+      #safety p.why { font-size: 17px; }
+      #scene-switch button { font-size: 18px; padding: 0 14px; }
+      #ground-note { font-size: 18px; }
+      .chip { font-size: 17px; }
     }
     .btn-round { width: var(--tap); padding: 0; font-size: 24px; }
 
@@ -121,9 +266,15 @@
     #hint.show { opacity: 1; transform: translate(-50%, 0); }
     #hint.aligned { background: #fff3c4; }
 
-    /* Narrower screens: keep Reset view above the Moon arrows */
+    /* Narrower screens: Reset view moves to the top-left, the hint drops below the top buttons */
     @media (max-width: 860px) {
-      #hud-bottom-right { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 88px); }
+      #hud-bottom-right {
+        top: max(16px, env(safe-area-inset-top));
+        left: max(16px, env(safe-area-inset-left));
+        right: auto;
+        bottom: auto;
+      }
+      #hint { top: calc(max(16px, env(safe-area-inset-top)) + 72px); }
     }
     @media (max-width: 560px) {
       #moon-pad-label { display: none; }
@@ -148,6 +299,7 @@
     #overlay {
       position: fixed;
       inset: 0;
+      z-index: 50;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -165,7 +317,8 @@
     #overlay.hidden { opacity: 0; pointer-events: none; }
 
     @media (prefers-reduced-motion: reduce) {
-      .btn, #overlay, #hint { transition: none; }
+      .btn, #overlay, #hint, #ground { transition: none; }
+      #btn-ground { animation: none; }
     }
   </style>
 
@@ -186,6 +339,7 @@
   <div id="hint" role="status" aria-live="polite"></div>
 
   <div id="hud-top-right">
+    <button id="btn-cones" class="btn btn-toggle" type="button" aria-pressed="false">🔦 Shadows</button>
     <button id="btn-sound" class="btn btn-round" type="button" aria-label="Sound effects on" aria-pressed="true">🔊</button>
   </div>
 
@@ -197,6 +351,126 @@
 
   <div id="hud-bottom-right">
     <button id="btn-reset-view" class="btn" type="button" aria-label="Reset view">🎯 Reset view</button>
+  </div>
+
+  <button id="btn-ground" class="btn btn-big" type="button" hidden>See it from Earth! 🌍</button>
+
+  <!-- Ground view: what people standing on Earth see. Drawn in SVG, animated from JS. -->
+  <div id="ground" aria-hidden="true">
+    <svg id="ground-svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice" role="img" aria-label="A view of the sky from the ground">
+      <defs>
+        <linearGradient id="g-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop id="g-sky-top" offset="0" stop-color="#3aa0ff" />
+          <stop id="g-sky-mid" offset="0.62" stop-color="#8fd0ff" />
+          <stop id="g-sky-bottom" offset="1" stop-color="#d6f1ff" />
+        </linearGradient>
+        <radialGradient id="g-sunglow">
+          <stop offset="0.3" stop-color="#fff6c8" stop-opacity="0.95" />
+          <stop offset="0.55" stop-color="#ffe27a" stop-opacity="0.35" />
+          <stop offset="1" stop-color="#ffd23f" stop-opacity="0" />
+        </radialGradient>
+        <radialGradient id="g-corona">
+          <stop offset="0.38" stop-color="#ffffff" stop-opacity="1" />
+          <stop offset="0.5" stop-color="#fdf3d2" stop-opacity="0.75" />
+          <stop offset="0.72" stop-color="#cfd8ff" stop-opacity="0.25" />
+          <stop offset="1" stop-color="#cfd8ff" stop-opacity="0" />
+        </radialGradient>
+        <radialGradient id="g-moonglow">
+          <stop offset="0.35" stop-color="#ffffff" stop-opacity="0.45" />
+          <stop offset="1" stop-color="#ffffff" stop-opacity="0" />
+        </radialGradient>
+        <radialGradient id="g-redglow">
+          <stop offset="0.35" stop-color="#ff7a45" stop-opacity="0.45" />
+          <stop offset="1" stop-color="#ff7a45" stop-opacity="0" />
+        </radialGradient>
+        <radialGradient id="g-copper" cx="0.4" cy="0.38">
+          <stop offset="0" stop-color="#e98a55" />
+          <stop offset="0.65" stop-color="#b4482a" />
+          <stop offset="1" stop-color="#7a2817" />
+        </radialGradient>
+        <clipPath id="clip-lmoon"><circle id="clip-lmoon-circle" cx="900" cy="240" r="80" /></clipPath>
+      </defs>
+
+      <rect width="1600" height="900" fill="url(#g-sky)" />
+      <g id="ground-stars"></g>
+
+      <!-- Solar eclipse sky -->
+      <g id="solar-sky">
+        <circle id="sun-glow" cx="900" cy="250" r="270" fill="url(#g-sunglow)" />
+        <circle id="sun-corona" cx="900" cy="250" r="240" fill="url(#g-corona)" opacity="0" />
+        <circle id="sun-disc" cx="900" cy="250" r="90" fill="#ffd23f" />
+        <circle id="smoon-disc" cx="600" cy="250" r="90" fill="#17123a" />
+      </g>
+
+      <!-- Lunar eclipse sky -->
+      <g id="lunar-sky">
+        <circle id="lmoon-halo" cx="900" cy="240" r="210" fill="url(#g-moonglow)" />
+        <circle id="lmoon-redhalo" cx="900" cy="240" r="210" fill="url(#g-redglow)" opacity="0" />
+        <circle id="lmoon-disc" cx="900" cy="240" r="80" fill="#f4f1e6" />
+        <g fill="#d8d3c4">
+          <circle cx="875" cy="215" r="17" /><circle cx="928" cy="262" r="12" />
+          <circle cx="905" cy="282" r="8" /><circle cx="935" cy="210" r="9" /><circle cx="866" cy="262" r="10" />
+        </g>
+        <g clip-path="url(#clip-lmoon)">
+          <circle id="lmoon-umbra" cx="600" cy="240" r="210" fill="#4a2632" opacity="0.88" />
+          <circle id="lmoon-red" cx="900" cy="240" r="80" fill="url(#g-copper)" opacity="0" />
+        </g>
+      </g>
+
+      <!-- Landscapes: every shape has a day colour and a night colour (data-day / data-night).
+           As the sky darkens, JS blends between them. -->
+      <g id="land-country">
+        <path d="M0 640 Q 300 540 620 610 T 1200 590 T 1600 600 V900 H0Z" data-day="#6fcf7a" data-night="#1b2445" />
+        <g id="house">
+          <rect x="250" y="600" width="170" height="125" rx="6" data-day="#f4a261" data-night="#2a2444" />
+          <polygon points="232,608 335,520 438,608" data-day="#c8553d" data-night="#1f1b38" />
+          <rect x="318" y="660" width="38" height="65" rx="6" data-day="#8a5a3b" data-night="#191530" />
+          <rect x="266" y="628" width="36" height="32" rx="4" data-day="#a8dcff" data-night="#ffd166" />
+          <rect x="372" y="628" width="36" height="32" rx="4" data-day="#a8dcff" data-night="#ffd166" />
+        </g>
+        <g id="tree">
+          <rect x="1284" y="590" width="32" height="120" rx="8" data-day="#8a5a3b" data-night="#1a1428" />
+          <g data-day="#2f9e57" data-night="#10203a">
+            <circle cx="1300" cy="560" r="72" />
+            <circle cx="1246" cy="598" r="50" />
+            <circle cx="1354" cy="598" r="50" />
+          </g>
+        </g>
+        <path d="M0 720 Q 400 640 820 700 T 1600 690 V900 H0Z" data-day="#45b05e" data-night="#121a36" />
+      </g>
+      <!-- City skyline: the buildings are generated in JS (see buildCity) -->
+      <g id="land-city" style="display: none"></g>
+    </svg>
+
+    <div id="ground-top">
+      <button id="btn-back-space" class="btn" type="button">🚀 Back to space</button>
+      <div class="chip">Seen from Earth 🌍</div>
+    </div>
+    <div id="ground-note" class="chip" role="status" aria-live="polite" hidden></div>
+    <div id="scene-switch" role="group" aria-label="Where are you watching from?">
+      <button type="button" data-scene="country" aria-pressed="true">🌳 Countryside</button>
+      <button type="button" data-scene="city" aria-pressed="false">🏙️ City</button>
+    </div>
+    <button id="btn-replay" class="btn" type="button" hidden>↻ Watch again</button>
+
+    <div id="safety" role="alertdialog" aria-modal="true" aria-labelledby="safety-text" aria-describedby="safety-why" hidden>
+      <div class="card">
+        <!-- Eclipse glasses icon -->
+        <svg viewBox="0 0 220 100" aria-hidden="true">
+          <path d="M14 34 L2 22" stroke="#ff8fab" stroke-width="8" stroke-linecap="round" />
+          <path d="M206 34 L218 22" stroke="#ff8fab" stroke-width="8" stroke-linecap="round" />
+          <rect x="8" y="26" width="204" height="66" rx="22" fill="#ff8fab" />
+          <path d="M98 60 Q110 46 122 60" stroke="#e5678d" stroke-width="8" fill="none" stroke-linecap="round" />
+          <ellipse cx="58" cy="58" rx="38" ry="24" fill="#1d1a33" />
+          <ellipse cx="162" cy="58" rx="38" ry="24" fill="#1d1a33" />
+          <ellipse cx="46" cy="50" rx="10" ry="5" fill="#ffffff" opacity="0.35" />
+          <ellipse cx="150" cy="50" rx="10" ry="5" fill="#ffffff" opacity="0.35" />
+        </svg>
+        <p id="safety-text">Never look at the Sun without special eclipse glasses!</p>
+        <p class="why" id="safety-why">The Sun is so bright it can hurt your eyes, even when the Moon covers most of it, and even if it doesn't feel like it hurts. Regular sunglasses are not enough. Eclipse glasses block almost all the light, so your eyes stay safe.</p>
+        <button id="btn-safety-ok" class="btn btn-big" type="button" disabled>Got it! 👍<span class="lock-bar"></span></button>
+      </div>
+    </div>
   </div>
 
   <div id="overlay" role="status">
@@ -250,6 +524,8 @@
         hitRadiusScale: 2.4,  // grab area around the Moon, bigger than the Moon for small fingers
       },
       glow: { color: 0xffe08a },
+      cones: { earthLength: 16, opacity: 1 },
+      redMoon: { tint: 0xe0a080, emissive: 0xb0401c, emissiveIntensity: 0.75, riseSeconds: 3 },
       reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     };
 
@@ -265,6 +541,9 @@
       arrowDir: 0,                         // -1, 0, +1 while an arrow is held
       dragging: false,
       glow: 0,                             // 0..1 brightness of the line-up glow
+      conesOn: false,                      // teaching cones visible?
+      cones: 0,                            // 0..1 cone fade
+      redness: 0,                          // 0..1 how coppery-red the Moon is
     };
 
     /* =====================================================================
@@ -536,7 +815,10 @@
     const moonTex = makeMoonTextures();
     const moon = new THREE.Mesh(
       new THREE.SphereGeometry(CONFIG.moon.radius, 48, 32),
-      new THREE.MeshStandardMaterial({ map: moonTex.map, bumpMap: moonTex.bumpMap, bumpScale: 3, roughness: 1, metalness: 0 })
+      new THREE.MeshStandardMaterial({
+        map: moonTex.map, bumpMap: moonTex.bumpMap, bumpScale: 3, roughness: 1, metalness: 0,
+        emissive: CONFIG.redMoon.emissive, emissiveMap: moonTex.map, emissiveIntensity: 0, // red glow, off for now
+      })
     );
     moon.castShadow = true;
     moon.receiveShadow = true;
@@ -623,6 +905,103 @@
     });
     alignGlow.visible = false;
     scene.add(alignGlow);
+
+    // --- Shadow cones (teaching aid) ---
+    // Dark see-through cones pointing away from the Sun, with a light rim so they
+    // show up against dark space. Hidden until a lesson (or the 🔦 button) turns them on.
+    function makeConeMaterial(height) {
+      return new THREE.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        uniforms: {
+          uOpacity: { value: 0 },
+          uHeight: { value: height },
+          uColor: { value: new THREE.Color(0x0b0720) },
+          uRim: { value: new THREE.Color(0xa99bff) },
+        },
+        vertexShader: `
+          uniform float uHeight;
+          varying vec3 vNormal;
+          varying vec3 vView;
+          varying float vAlong;
+          void main() {
+            vec4 mv = modelViewMatrix * vec4(position, 1.0);
+            vNormal = normalize(normalMatrix * normal);
+            vView = normalize(-mv.xyz);
+            vAlong = position.y / uHeight + 0.5;   // 0 at the body, 1 at the tip
+            gl_Position = projectionMatrix * mv;
+          }`,
+        fragmentShader: `
+          uniform float uOpacity;
+          uniform vec3 uColor;
+          uniform vec3 uRim;
+          varying vec3 vNormal;
+          varying vec3 vView;
+          varying float vAlong;
+          void main() {
+            float rim = pow(1.0 - abs(dot(normalize(vNormal), normalize(vView))), 2.0);
+            float fade = 1.0 - 0.6 * smoothstep(0.5, 1.0, vAlong);
+            vec3 col = mix(uColor, uRim, rim * 0.75);
+            gl_FragColor = vec4(col, (0.42 + 0.4 * rim) * fade * uOpacity);
+          }`,
+      });
+    }
+    function makeShadowCone(radius, length) {
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(radius, length, 48, 1, true), makeConeMaterial(length));
+      cone.rotation.z = -Math.PI / 2; // tip points along +x, away from the Sun
+      cone.userData.length = length;
+      cone.visible = false;
+      cone.renderOrder = 2;
+      earthSystem.add(cone);
+      return cone;
+    }
+    const earthCone = makeShadowCone(CONFIG.earth.radius, CONFIG.cones.earthLength);
+    earthCone.position.x = CONFIG.cones.earthLength / 2;
+    // The Moon's cone just reaches Earth when the Moon is in the middle (like a total solar eclipse).
+    const moonCone = makeShadowCone(CONFIG.moon.radius, CONFIG.moon.orbitRadius - CONFIG.earth.radius + 0.4);
+
+    function setShadowCones(on) {
+      state.conesOn = Boolean(on);
+      emit("cones", { on: state.conesOn });
+    }
+
+    // --- Red Moon during a lunar eclipse ---
+    // How deep the Moon sits inside Earth's (straight, sun-parallel) shadow: 0 = outside, 1 = fully in.
+    function moonShadowDepth() {
+      const a = state.moonAngle;
+      const along = Math.cos(a) * CONFIG.moon.orbitRadius;
+      if (along <= 0) return 0; // Moon is on the Sun's side of Earth
+      const lateral = Math.abs(Math.sin(a)) * CONFIG.moon.orbitRadius;
+      return THREE.MathUtils.clamp(
+        (CONFIG.earth.radius + CONFIG.moon.radius - lateral) / (2 * CONFIG.moon.radius), 0, 1);
+    }
+    const moonWhite = new THREE.Color(0xffffff);
+    const moonTint = new THREE.Color(CONFIG.redMoon.tint);
+    let redMoonAnnounced = false;
+
+    /** Called every frame: cone fades and the slow copper-red change. */
+    function updateEclipseEffects(dt) {
+      // Cones
+      state.cones += ((state.conesOn ? 1 : 0) - state.cones) * Math.min(1, dt * 5);
+      const coneOpacity = state.cones * CONFIG.cones.opacity;
+      [earthCone, moonCone].forEach((c) => {
+        c.visible = coneOpacity > 0.01;
+        c.material.uniforms.uOpacity.value = coneOpacity;
+      });
+      moonCone.position.set(moon.position.x + moonCone.userData.length / 2, 0, moon.position.z);
+
+      // Red Moon: turns red slowly (about riseSeconds), comes back a bit faster.
+      const want = Math.pow(moonShadowDepth(), 1.5);
+      const rate = want > state.redness ? 1 / CONFIG.redMoon.riseSeconds : 1.5;
+      state.redness += THREE.MathUtils.clamp(want - state.redness, -rate * dt, rate * dt);
+      if (CONFIG.reducedMotion) state.redness = want;
+      moon.material.color.copy(moonWhite).lerp(moonTint, state.redness);
+      moon.material.emissiveIntensity = CONFIG.redMoon.emissiveIntensity * state.redness;
+
+      if (!redMoonAnnounced && state.redness > 0.9) { redMoonAnnounced = true; emit("redmoon", { on: true }); }
+      if (redMoonAnnounced && state.redness < 0.2) { redMoonAnnounced = false; emit("redmoon", { on: false }); }
+    }
 
     /** Stretch the beam from the Sun's edge to the far end of the line-up. */
     function shapeAlignGlow(type) {
@@ -873,6 +1252,293 @@
       soundBtn.setAttribute("aria-pressed", String(!Sound.muted));
     });
 
+    // --- Shadow cones toggle ---
+    const conesBtn = document.getElementById("btn-cones");
+    conesBtn.addEventListener("click", () => setShadowCones(!state.conesOn));
+    events.addEventListener("cones", (e) => conesBtn.setAttribute("aria-pressed", String(e.detail.on)));
+
+    /* ---------- Ground view ----------
+       What people standing on Earth see. Solar: the Moon's dark disc slides over
+       the Sun, the sky turns to dusk, stars come out, the corona glows. Lunar: at
+       night, Earth's shadow slides over the full Moon and it turns coppery red.
+       Events: "groundview" { type, open }, "groundphase" { type, phase }
+       phases: "safety" → "playing" → "total" → "done"                     */
+    const GROUND = {
+      sun:  { x: 900, y: 250, r: 90 },
+      moon: { x: 900, y: 240, r: 80 },   // lunar view
+      umbraR: 210,                       // Earth's shadow is much wider than the Moon
+      timing: { in: 4.5, hold: 3.5, out: 4 },
+      safetyLockSeconds: 2,
+      sky: {
+        day:   ["#3aa0ff", "#8fd0ff", "#d6f1ff"],
+        dusk:  ["#0d1238", "#2a2463", "#ff9a62"], // totality: a sunset glow all around the horizon
+        night: ["#070723", "#1a1650", "#33285e"],
+      },
+      city: {
+        groundY: 770,
+        quietZone: { x: 900, halfWidth: 270, maxTop: 430 }, // keep buildings below the Sun and Moon
+        buildingDay: ["#8fa3c7", "#a7b6d6", "#7b8fb8", "#b9c4dd", "#9c93c9"],
+        buildingNight: ["#1b2142", "#20264a", "#181d3c", "#232a50", "#1f1f45"],
+        litAtNight: 0.65, // share of windows with the lights on
+      },
+    };
+    const groundEl = document.getElementById("ground");
+    const $g = (id) => document.getElementById(id);
+    const ground = { open: false, type: null, phase: "idle", t: 0, safetyStart: 0, totalAnnounced: false };
+    // Wall-clock time, so the 2-second lock can't stretch or shrink with the frame rate.
+    const safetyElapsed = () => (performance.now() - ground.safetyStart) / 1000;
+
+    // Stars for the ground sky (fixed pattern)
+    {
+      const rand = seededRandom(99);
+      const ns = "http://www.w3.org/2000/svg";
+      for (let i = 0; i < 90; i++) {
+        const c = document.createElementNS(ns, "circle");
+        c.setAttribute("cx", (rand() * 1600).toFixed(0));
+        c.setAttribute("cy", (rand() * 520).toFixed(0));
+        c.setAttribute("r", (1.4 + rand() * 2.4).toFixed(1));
+        c.setAttribute("fill", rand() > 0.8 ? "#fff3c4" : "#ffffff");
+        $g("ground-stars").appendChild(c);
+      }
+    }
+
+    function hexToRgb(h) { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; }
+    function mixHex(a, b, t) {
+      const A = hexToRgb(a), B = hexToRgb(b);
+      return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(",")})`;
+    }
+    const smooth = (e0, e1, x) => { const t = THREE.MathUtils.clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
+
+    /** Fraction of a circle (radius r) covered by another circle of the same size, centres d apart. */
+    function equalDiscOverlap(d, r) {
+      if (d >= 2 * r) return 0;
+      const a = 2 * r * r * Math.acos(d / (2 * r)) - (d / 2) * Math.sqrt(4 * r * r - d * d);
+      return a / (Math.PI * r * r);
+    }
+
+    /** Offset of the moving disc over time: slide in, hold in the middle, slide out. */
+    function slideOffset(t, dist) {
+      const T = GROUND.timing;
+      if (t < T.in) return -dist * (1 - smooth(0, 1, t / T.in));
+      if (t < T.in + T.hold) return 0;
+      return dist * smooth(0, 1, (t - T.in - T.hold) / T.out);
+    }
+    const groundDuration = () => GROUND.timing.in + GROUND.timing.hold + GROUND.timing.out;
+
+    // --- Where are we watching from? Countryside or city ---
+    const SCENE_KEY = "eclipse-explorer.groundScene";
+    let groundScene = "country";
+    try { if (localStorage.getItem(SCENE_KEY) === "city") groundScene = "city"; } catch { /* storage blocked: fine */ }
+
+    /** City skyline: skyscrapers with window grids. Short buildings in the middle so the Sun and Moon stay visible. */
+    function buildCity() {
+      const C = GROUND.city;
+      const ns = "http://www.w3.org/2000/svg";
+      const root = $g("land-city");
+      const el = (tag, attrs, parent = root) => {
+        const n = document.createElementNS(ns, tag);
+        Object.entries(attrs).forEach(([k, v]) => n.setAttribute(k, v));
+        parent.appendChild(n);
+        return n;
+      };
+      const rand = seededRandom(2024);
+      // All windows share two groups (lights on / lights off at night), so darkening repaints 2 shapes, not hundreds.
+      const buildings = el("g", {});
+      const winsLit = el("g", { "data-day": "#d8ecff", "data-night": "#ffd166" });
+      const winsDark = el("g", { "data-day": "#d8ecff", "data-night": "#2b3260" });
+      let tallest = null;
+      for (let x = -20, i = 0; x < 1620; i++) {
+        const w = 90 + Math.floor(rand() * 80);
+        const centre = x + w / 2;
+        const inQuietZone = Math.abs(centre - C.quietZone.x) < C.quietZone.halfWidth;
+        const top = inQuietZone
+          ? C.quietZone.maxTop + rand() * 120
+          : 150 + rand() * 320;
+        const h = C.groundY - top;
+        const c = i % C.buildingDay.length;
+        el("rect", { x, y: top, width: w, height: h + 2, rx: 4, "data-day": C.buildingDay[c], "data-night": C.buildingNight[c] }, buildings);
+        if (!tallest || top < tallest.top) tallest = { x, w, top };
+        // Window grid
+        const cols = Math.max(2, Math.floor((w - 20) / 30));
+        const gap = (w - cols * 16) / (cols + 1);
+        for (let wy = top + 22; wy < C.groundY - 40; wy += 38) {
+          for (let k = 0; k < cols; k++) {
+            el("rect", { x: (x + gap + k * (16 + gap)).toFixed(1), y: wy.toFixed(0), width: 16, height: 22, rx: 2 },
+              rand() < C.litAtNight ? winsLit : winsDark);
+          }
+        }
+        x += w + 6 + Math.floor(rand() * 12);
+      }
+      // Antenna with a red light on the tallest tower
+      el("rect", { x: tallest.x + tallest.w / 2 - 3, y: tallest.top - 60, width: 6, height: 60, "data-day": "#6b7aa3", "data-night": "#141834" });
+      el("circle", { cx: tallest.x + tallest.w / 2, cy: tallest.top - 62, r: 7, "data-day": "#ff6b6b", "data-night": "#ff3b3b" });
+      // Sidewalk, road and lane markings
+      el("rect", { x: 0, y: C.groundY, width: 1600, height: 24, "data-day": "#c9ccd6", "data-night": "#2a2d45" });
+      el("rect", { x: 0, y: C.groundY + 24, width: 1600, height: 140, "data-day": "#5b5f73", "data-night": "#141628" });
+      const lanes = el("g", { "data-day": "#f5f5f5", "data-night": "#3a3d55" });
+      for (let lx = 20; lx < 1600; lx += 120) el("rect", { x: lx, y: C.groundY + 82, width: 60, height: 10, rx: 5 }, lanes);
+    }
+    buildCity();
+
+    let lastLandPaint = { scene: null, darkness: -1 };
+    /** Blend every landscape shape between its day and night colour. */
+    function paintLand(darkness) {
+      if (lastLandPaint.scene === groundScene && Math.abs(lastLandPaint.darkness - darkness) < 0.004) return;
+      lastLandPaint = { scene: groundScene, darkness };
+      $g(groundScene === "city" ? "land-city" : "land-country")
+        .querySelectorAll("[data-day]")
+        .forEach((n) => n.setAttribute("fill", mixHex(n.dataset.day, n.dataset.night, darkness)));
+    }
+
+    function setGroundScene(scene) {
+      groundScene = scene === "city" ? "city" : "country";
+      try { localStorage.setItem(SCENE_KEY, groundScene); } catch { /* fine without it */ }
+      $g("land-country").style.display = groundScene === "country" ? "" : "none";
+      $g("land-city").style.display = groundScene === "city" ? "" : "none";
+      document.querySelectorAll("#scene-switch button").forEach((b) =>
+        b.setAttribute("aria-pressed", String(b.dataset.scene === groundScene)));
+      lastLandPaint.scene = null; // force a repaint
+      if (ground.open) renderGround();
+      emit("groundscene", { scene: groundScene });
+    }
+    document.querySelectorAll("#scene-switch button").forEach((b) =>
+      b.addEventListener("click", () => setGroundScene(b.dataset.scene)));
+    setGroundScene(groundScene); // apply the remembered choice
+    function paintSky(from, to, t) {
+      ["top", "mid", "bottom"].forEach((k, i) => $g(`g-sky-${k}`).setAttribute("stop-color", mixHex(from[i], to[i], t)));
+    }
+
+    function renderGround() {
+      const t = ground.t;
+      if (ground.type === "solar") {
+        const S = GROUND.sun;
+        const dx = slideOffset(t, S.r * 3.4);
+        const mx = S.x + dx, my = S.y + dx * 0.12;
+        $g("smoon-disc").setAttribute("cx", mx.toFixed(1));
+        $g("smoon-disc").setAttribute("cy", my.toFixed(1));
+        const coverage = equalDiscOverlap(Math.hypot(mx - S.x, my - S.y), S.r);
+        // A new Moon is hard to see in daytime: faint while far away, solid once it bites the Sun.
+        const nearSun = smooth(S.r * 3.2, S.r * 2, Math.hypot(mx - S.x, my - S.y));
+        $g("smoon-disc").setAttribute("opacity", (0.3 + 0.7 * nearSun).toFixed(3));
+        const dark = smooth(0.55, 1, coverage);           // the sky stays bright until the Sun is almost gone
+        paintSky(GROUND.sky.day, GROUND.sky.dusk, dark);
+        paintLand(dark);
+        $g("ground-stars").setAttribute("opacity", smooth(0.85, 1, coverage).toFixed(3));
+        $g("sun-corona").setAttribute("opacity", smooth(0.95, 0.999, coverage).toFixed(3));
+        $g("sun-glow").setAttribute("opacity", (1 - 0.95 * smooth(0.6, 1, coverage)).toFixed(3));
+        groundEl.style.background = mixHex(GROUND.sky.day[0], GROUND.sky.dusk[0], dark);
+        return coverage > 0.995;
+      } else {
+        const M = GROUND.moon, R = GROUND.umbraR;
+        const dx = slideOffset(t, R + M.r + 60);
+        $g("lmoon-umbra").setAttribute("cx", (M.x + dx).toFixed(1));
+        $g("lmoon-umbra").setAttribute("cy", (M.y + dx * 0.1).toFixed(1));
+        const dist = Math.hypot(dx, dx * 0.1);
+        const red = smooth(R - M.r + 40, R - M.r, dist);   // fully inside Earth's shadow → copper red
+        const covered = smooth(R + M.r, R - M.r, dist);
+        $g("lmoon-red").setAttribute("opacity", red.toFixed(3));
+        $g("lmoon-halo").setAttribute("opacity", (1 - 0.9 * covered).toFixed(3));
+        $g("lmoon-redhalo").setAttribute("opacity", red.toFixed(3));
+        paintSky(GROUND.sky.night, GROUND.sky.night, 0);
+        paintLand(1);
+        $g("ground-stars").setAttribute("opacity", (0.75 + 0.25 * covered).toFixed(3));
+        groundEl.style.background = GROUND.sky.night[0];
+        return red > 0.98;
+      }
+    }
+
+    function setGroundPhase(phase) {
+      ground.phase = phase;
+      emit("groundphase", { type: ground.type, phase });
+      $g("btn-replay").hidden = phase !== "done";
+    }
+
+    function startGroundAnimation() {
+      ground.t = 0;
+      ground.totalAnnounced = false;
+      $g("safety").hidden = true;
+      $g("ground-top").hidden = false;
+      setGroundPhase("playing");
+    }
+
+    function openGroundView(type) {
+      if (ground.open) return;
+      ground.open = true;
+      ground.type = type;
+      ground.t = 0;
+      $g("solar-sky").style.display = type === "solar" ? "" : "none";
+      $g("lunar-sky").style.display = type === "lunar" ? "" : "none";
+      const note = $g("ground-note");
+      if (type === "lunar") {
+        note.textContent = "A lunar eclipse is safe to look at! 👀";
+        note.hidden = false;
+      } else {
+        note.hidden = true;
+      }
+      renderGround();
+      groundEl.classList.add("open");
+      groundEl.setAttribute("aria-hidden", "false");
+      refreshGroundButton();
+      emit("groundview", { type, open: true });
+
+      if (type === "solar") {
+        // Safety first: the card can't be closed for 2 seconds.
+        ground.safetyStart = performance.now();
+        $g("ground-top").hidden = true;
+        $g("safety").hidden = false;
+        const ok = $g("btn-safety-ok");
+        ok.disabled = true;
+        ok.classList.remove("locking");
+        void ok.offsetWidth; // restart the progress bar
+        ok.classList.add("locking");
+        setGroundPhase("safety");
+      } else {
+        $g("safety").hidden = true;
+        $g("ground-top").hidden = false;
+        startGroundAnimation();
+      }
+    }
+
+    function closeGroundView() {
+      if (!ground.open || ground.phase === "safety") return;
+      ground.open = false;
+      ground.phase = "idle";
+      groundEl.classList.remove("open");
+      groundEl.setAttribute("aria-hidden", "true");
+      clock.getDelta(); // don't let the 3D scene jump after a long pause
+      refreshGroundButton();
+      emit("groundview", { type: ground.type, open: false });
+    }
+
+    /** Called every frame while the ground view is open. */
+    function updateGround(dt) {
+      if (ground.phase === "safety") {
+        if (safetyElapsed() >= GROUND.safetyLockSeconds) $g("btn-safety-ok").disabled = false;
+        return;
+      }
+      if (ground.phase !== "playing" && ground.phase !== "total") return;
+      ground.t = Math.min(groundDuration(), ground.t + dt);
+      const total = renderGround();
+      if (total && !ground.totalAnnounced) { ground.totalAnnounced = true; setGroundPhase("total"); }
+      if (ground.t >= groundDuration()) setGroundPhase("done");
+    }
+
+    $g("btn-safety-ok").addEventListener("click", () => {
+      if (ground.phase === "safety" && safetyElapsed() >= GROUND.safetyLockSeconds) startGroundAnimation();
+    });
+    $g("btn-back-space").addEventListener("click", closeGroundView);
+    $g("btn-replay").addEventListener("click", startGroundAnimation);
+    window.addEventListener("keydown", (e) => { if (e.key === "Escape") closeGroundView(); });
+
+    // "See it from Earth!" appears once the Moon is snapped into a line-up.
+    const groundBtn = $g("btn-ground");
+    function refreshGroundButton() {
+      groundBtn.hidden = !(state.aligned && !ground.open && groundButtonEnabled);
+    }
+    let groundButtonEnabled = true; // lessons can switch this off
+    groundBtn.addEventListener("click", () => { if (state.aligned) openGroundView(state.aligned); });
+    events.addEventListener("alignment", refreshGroundButton);
+
     // --- Status hint chip (Stella and Kai take over this job in step 4) ---
     const hintEl = document.getElementById("hint");
     const HINTS = {
@@ -933,6 +1599,11 @@
       /** Push the Moon like a finger would (snapping applies). */
       pushMoon(a) { setRawAngle(a); },
       get state() { return { ...state }; },
+      setShadowCones, openGroundView, closeGroundView,
+      get ground() { return { ...ground }; },
+      /** Jump the ground-view animation to a time in seconds (for checking frames). */
+      seekGround(t) { ground.t = t; renderGround(); },
+      setGroundScene,
       events,
       THREE, scene, camera, renderer, controls, homeCameraPosition,
     };
@@ -947,8 +1618,18 @@
       const dt = Math.min(clock.getDelta(), 0.1);
       const t = clock.elapsedTime;
 
+      // While the ground view fully covers the screen, pause the 3D scene to save battery.
+      if (ground.open) {
+        updateGround(dt);
+        if (groundEl.classList.contains("open") && getComputedStyle(groundEl).opacity === "1") {
+          requestAnimationFrame(tick);
+          return;
+        }
+      }
+
       earth.rotation.y += dt * CONFIG.earth.spinSpeed;
       updateMoon(dt);
+      updateEclipseEffects(dt);
 
       if (!CONFIG.reducedMotion) {
         sunGlow.scale.setScalar(CONFIG.sun.glowSize * (1 + Math.sin(t * 1.6) * 0.025));
