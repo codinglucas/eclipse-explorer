@@ -396,10 +396,137 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .stella-body, .fig-kai, .kai-arm, .sparkle, #btn-show-guide.has-new { animation: none !important; }
+      .stella-body, .fig-kai, .kai-arm, .sparkle, #btn-show-guide.has-new, #btn-next.ready { animation: none !important; }
       #guide-dock.entering .guide-figure, #guide-dock.entering .bubble, .bubble.pop { animation: fade-in 0.2s both !important; }
       #guide-dock.leaving { transform: none !important; }
       @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+    }
+
+    /* ---------- Lessons: chapter progress bar, task chip, fact labels ---------- */
+    #progress {
+      position: fixed;
+      z-index: 5;
+      top: max(16px, env(safe-area-inset-top));
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      pointer-events: none;
+    }
+    #progress > * { pointer-events: auto; }
+    #progress[hidden] { display: none; }
+    #progress-dots {
+      position: relative;
+      display: flex;
+      gap: 8px;
+      margin: 0;
+      padding: 6px;
+      list-style: none;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.16);
+    }
+    .chapter-dot {
+      position: relative;
+      width: 56px;
+      height: 56px;
+      padding: 0;
+      border: 3px solid transparent;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.9);
+      color: var(--ui-text);
+      font: 700 22px/1 "Fredoka", system-ui, sans-serif;
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.2s ease;
+    }
+    .chapter-dot:active { transform: scale(0.92); }
+    .chapter-dot:focus-visible { outline: 4px solid var(--ui-accent); outline-offset: 2px; }
+    .chapter-dot.current { border-color: var(--ui-accent); background: #fff3c4; transform: scale(1.08); }
+    .chapter-dot.done::after {
+      content: "✓";
+      position: absolute;
+      right: -4px;
+      bottom: -4px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #3fb15a;
+      color: #fff;
+      font-size: 14px;
+      line-height: 22px;
+    }
+    .chapter-dot:disabled { cursor: default; opacity: 0.45; background: rgba(255, 255, 255, 0.6); }
+    #progress-title {
+      padding: 4px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.16);
+      color: #fff;
+      font-size: 17px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    #task-chip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 16px;
+      border-radius: 999px;
+      background: var(--ui-bg);
+      color: var(--ui-text);
+      font-size: 19px;
+      font-weight: 700;
+      box-shadow: var(--ui-shadow);
+    }
+    #task-chip[hidden] { display: none; }
+    #task-chip .meter { width: 140px; height: 14px; border-radius: 999px; background: #e4defa; overflow: hidden; }
+    #task-chip .meter span { display: block; height: 100%; width: 0; background: var(--ui-accent); transition: width 0.2s ease; }
+    #task-chip.done { background: #d9f7df; }
+
+    #fact-labels { position: fixed; inset: 0; z-index: 4; pointer-events: none; }
+    .fact-label {
+      position: absolute;
+      left: 0; top: 0;
+      max-width: 230px;
+      padding: 8px 14px;
+      border-radius: 18px;
+      background: #fff;
+      color: var(--ui-text);
+      font-size: 18px;
+      font-weight: 600;
+      line-height: 1.25;
+      text-align: center;
+      box-shadow: var(--ui-shadow);
+      animation: bubble-in 0.3s ease-out;
+    }
+    .fact-label::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: -10px;
+      margin-left: -10px;
+      border: 10px solid transparent;
+      border-bottom: 0;
+      border-top-color: #fff;
+    }
+    .fact-label.below::after { bottom: auto; top: -10px; border: 10px solid transparent; border-top: 0; border-bottom-color: #fff; }
+    .fact-label::after { left: var(--tail-x, 50%); }
+
+    /* Bubble extras used by lessons */
+    .bubble-cheer { margin: 0 0 6px; font-size: 21px; font-weight: 700; color: #c77700; animation: bubble-in 0.3s ease-out; }
+    .bubble-cheer[hidden] { display: none; }
+    #btn-next.ready { animation: nudge 0.9s ease-in-out 3; }
+
+    /* Medium screens: the chapter bar drops below the top buttons */
+    @media (max-width: 1000px) {
+      #progress { top: calc(max(16px, env(safe-area-inset-top)) + 70px); }
+    }
+    @media (max-width: 560px) {
+      .chapter-dot { width: 44px; height: 44px; font-size: 18px; }
+      #progress-dots { gap: 4px; }
+      #progress-title { font-size: 15px; }
+      #task-chip { font-size: 16px; }
+      #task-chip .meter { width: 90px; }
     }
 
     /* ---------- UI: labels ---------- */
@@ -456,6 +583,14 @@
   <canvas id="scene" aria-label="A 3D view of the Sun, the Earth and the Moon"></canvas>
 
   <div id="scale-label">Not to scale</div>
+
+  <div id="fact-labels" aria-live="polite"></div>
+
+  <nav id="progress" aria-label="Chapters" hidden>
+    <ol id="progress-dots"></ol>
+    <div id="progress-title"></div>
+    <div id="task-chip" role="status" hidden></div>
+  </nav>
 
   <div id="hud-top-right">
     <button id="btn-cones" class="btn btn-toggle" type="button" aria-pressed="false">🔦 Shadows</button>
@@ -649,6 +784,7 @@
         <p id="bubble-text"></p>
       </div>
       <p class="bubble-more" id="bubble-more" hidden></p>
+      <p class="bubble-cheer" id="bubble-cheer" role="status" hidden></p>
       <div class="bubble-actions" id="bubble-actions">
         <button id="btn-speak" class="btn btn-round" type="button" aria-label="Read aloud" aria-pressed="false">🔊</button>
         <button id="btn-more" class="btn" type="button" aria-expanded="false" aria-controls="bubble-more">Explore more! 🔭</button>
@@ -1190,6 +1326,36 @@
       if (redMoonAnnounced && state.redness < 0.2) { redMoonAnnounced = false; emit("redmoon", { on: false }); }
     }
 
+    // --- Light rays (teaching aid): straight beams from the Sun; the ones that hit Earth stop there ---
+    const lightRays = new THREE.Group();
+    {
+      const startX = CONFIG.sun.position.x + CONFIG.sun.radius;
+      const R = CONFIG.earth.radius, ex = CONFIG.earth.position.x;
+      [[0, 0], [1.5, 0.6], [-1.2, 1.8], [0.4, -1.9], [0, 3.6], [-2.6, -3.2], [2.4, -4.6], [-0.6, 5.2]].forEach(([y, z]) => {
+        const d = Math.hypot(y, z);
+        const endX = d < R ? ex - Math.sqrt(R * R - d * d) : ex + CONFIG.moon.orbitRadius + 4;
+        const len = endX - startX;
+        const ray = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.06, 0.06, len, 8, 1, true),
+          new THREE.MeshBasicMaterial({ color: 0xfff1a8, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })
+        );
+        ray.rotation.z = Math.PI / 2;
+        ray.position.set(startX + len / 2, y, z);
+        lightRays.add(ray);
+      });
+    }
+    lightRays.visible = false;
+    scene.add(lightRays);
+    let raysOn = false, raysFade = 0;
+    function setLightRays(on) { raysOn = Boolean(on); }
+    function updateLightRays(dt) {
+      raysFade += ((raysOn ? 1 : 0) - raysFade) * Math.min(1, dt * 4);
+      lightRays.visible = raysFade > 0.01;
+      if (!lightRays.visible) return;
+      const shimmer = CONFIG.reducedMotion ? 1 : 0.85 + 0.15 * Math.sin(clock.elapsedTime * 4);
+      lightRays.children.forEach((r) => { r.material.opacity = 0.55 * raysFade * shimmer; });
+    }
+
     /** Stretch the beam from the Sun's edge to the far end of the line-up. */
     function shapeAlignGlow(type) {
       const startX = CONFIG.sun.position.x + CONFIG.sun.radius;
@@ -1254,8 +1420,11 @@
     }
 
     function setRawAngle(angle) {
+      const before = state.rawAngle;
       state.rawAngle = wrapAngle(angle);
       updateAlignment();
+      const delta = angleDiff(state.rawAngle, before);
+      if (delta) emit("moonpush", { delta });   // lessons count how far the child moved the Moon
     }
 
     // --- Dragging: find where the pointer meets the flat orbit plane ---
@@ -1315,6 +1484,24 @@
     }
     window.addEventListener("pointerup", endDrag);
     window.addEventListener("pointercancel", endDrag);
+
+    // --- Tapping a body (Sun, Earth or Moon) without dragging → "bodytap" event ---
+    let tapStart = null;
+    window.addEventListener("pointerdown", (e) => {
+      tapStart = e.target === canvas && e.isPrimary ? { x: e.clientX, y: e.clientY, t: performance.now() } : null;
+    }, { capture: true });
+    window.addEventListener("pointerup", (e) => {
+      if (!tapStart || !e.isPrimary) return;
+      const moved = Math.hypot(e.clientX - tapStart.x, e.clientY - tapStart.y);
+      const quick = performance.now() - tapStart.t < 700;
+      tapStart = null;
+      if (moved > 10 || !quick) return;
+      aimRay(e);
+      const hits = raycaster.intersectObjects([moonHit, earth, sunBall], false);
+      if (!hits.length) return;
+      const o = hits[0].object;
+      emit("bodytap", { body: o === sunBall ? "sun" : o === earth ? "earth" : "moon" });
+    });
 
     // --- ◀ ▶ buttons: tap to nudge, hold to keep moving ---
     function bindArrow(button, dir) {
@@ -1453,6 +1640,8 @@
       const speakBtn = $("btn-speak"), moreBtn = $("btn-more"), nextBtn = $("btn-next");
       const hideBtn = $("btn-hide-guide"), showBtn = $("btn-show-guide");
       let minimized = false;   // bubble tucked away; the talk waits until the child brings it back
+      const cheerEl = $("bubble-cheer");
+      let cheerTimer = null;
 
       let seq = null;          // { lines, index, resolve, tag }
       let shownGuide = null;   // guide currently on screen
@@ -1513,6 +1702,9 @@
 
       function renderLine(line, quick = false) {
         clearTimeout(lockTimer);
+        clearTimeout(cheerTimer);
+        cheerEl.hidden = true;
+        nextBtn.classList.remove("ready");
         stopSpeech();
         dock.classList.toggle("quick", quick);
         nameEl.textContent = GUIDE_INFO[line.guide].name;
@@ -1650,7 +1842,24 @@
           if (seq) finish(false);
           hideDock();
         },
-        allowNext() { nextBtn.hidden = false; },
+        allowNext() {
+          if (!nextBtn.hidden) return;
+          nextBtn.hidden = false;
+          nextBtn.classList.remove("ready");
+          void nextBtn.offsetWidth;
+          nextBtn.classList.add("ready");
+        },
+        /** A short extra line in the open bubble, e.g. "Almost! Keep going!" */
+        cheer(text, ms = 2200) {
+          if (dock.hidden || minimized) return;
+          clearTimeout(cheerTimer);
+          cheerEl.textContent = text;
+          cheerEl.hidden = false;
+          cheerEl.style.animation = "none";
+          void cheerEl.offsetWidth;
+          cheerEl.style.animation = "";
+          if (ms) cheerTimer = setTimeout(() => { cheerEl.hidden = true; }, ms);
+        },
         restore,
         get minimized() { return minimized; },
         get busy() { return Boolean(seq); },
@@ -1660,19 +1869,137 @@
 
     /* =====================================================================
        LESSONS
-       All words the guides say live here. (Step 5 turns this into the full
-       LESSONS array with chapters; for now these are short scripts and the
-       reactions that trigger them while the child explores.)
+       All words the guides say live here, so the text can be edited without
+       touching any logic.
+
+       LESSONS is a list of chapters. Each chapter has steps shaped like:
+         { id, guide: "stella" | "kai", text, more,
+           action: null | "tapBodies" | "orbitOnce" | "alignSolar" | "alignLunar"
+                   | "redMoon" | "groundSolar" | "groundLunar",
+           optional: true,          // Next shows right away; the action is a bonus
+           sceneEffect: null | "showShadowCones" | "hideShadowCones"
+                   | "showLightRays" | "hideLightRays" | "moonStart" | "resetView"
+                   (or a list of these),
+           icon: "glasses", lockSeconds: 2 }
+       A step with an action hides Next until the child has done it.
        ===================================================================== */
+    const LESSONS = [
+      {
+        id: "family", icon: "☀️", title: "Meet the family",
+        setup: ["hideShadowCones", "hideLightRays"],
+        steps: [
+          { id: "hi-stella", guide: "stella", text: "Hi! I'm Stella. I'm a star, just like the Sun!",
+            more: "Of all the stars, the Sun is the closest one to Earth. That's why the Sun looks so big and bright." },
+          { id: "sun-light", guide: "stella", text: "The Sun is a star too. The Sun makes its own light!",
+            more: "The Sun is a giant ball of super-hot, glowing gas. About a million Earths could fit inside the Sun!" },
+          { id: "hi-kai", guide: "kai", text: "And I'm Captain Kai! This blue and green ball is Earth, our home.",
+            more: "Earth spins around once every day. That spin gives us day and night." },
+          { id: "moon", guide: "kai", text: "The little gray ball is the Moon.",
+            more: "The Moon is made of rock and has no air. Astronauts have walked on the Moon!" },
+          { id: "tap-all", guide: "kai", text: "Tap the Sun, Earth and the Moon to learn more!", action: "tapBodies",
+            more: "You can also drag the empty space to turn your view around." },
+          { id: "family-done", guide: "kai", text: "Great tapping! Now you know the whole family.",
+            more: "Sun, Earth and Moon: those three are the stars of every eclipse!" },
+        ],
+      },
+      {
+        id: "light", icon: "🔦", title: "Light and shadows",
+        setup: ["hideShadowCones", "hideLightRays"],
+        steps: [
+          { id: "light-out", guide: "stella", text: "Light shoots out of the Sun and zooms through space.",
+            more: "Sunlight is super fast! Sunlight takes about 8 minutes to travel from the Sun to Earth." },
+          { id: "straight", guide: "stella", text: "Light always travels in straight lines.", sceneEffect: "showLightRays",
+            more: "Light can't bend around corners by itself. That's why you can't see around a wall!" },
+          { id: "blocked", guide: "stella", text: "When something blocks the light, a shadow appears behind.",
+            more: "On a sunny day, your body blocks sunlight too. That's how you get a shadow!" },
+          { id: "cones", guide: "stella", text: "These dark cones show the shadows of Earth and the Moon.",
+            sceneEffect: ["showShadowCones", "hideLightRays"],
+            more: "Space is dark, so we usually can't see shadows floating there. The cones are a helper drawing." },
+          { id: "moonlight", guide: "stella", text: "The Moon makes no light. Sunlight bounces off the Moon!",
+            more: "Moonlight is really sunlight that bounced off the Moon's gray rocks and came to Earth." },
+          { id: "light-done", guide: "stella", text: "Remember: an eclipse is a shadow falling on something!",
+            more: "In a solar eclipse, the Moon's shadow falls on Earth. In a lunar eclipse, Earth's shadow falls on the Moon." },
+        ],
+      },
+      {
+        id: "trip", icon: "🌙", title: "The Moon's trip",
+        setup: ["hideShadowCones", "hideLightRays", "moonStart"],
+        steps: [
+          { id: "orbit", guide: "kai", text: "The Moon travels around and around Earth.",
+            more: "The Moon's path around Earth is called an orbit." },
+          { id: "month", guide: "kai", text: "One whole trip takes about a month.",
+            more: "One trip takes about 29 and a half days. The word month even comes from the word moon!" },
+          { id: "drag-around", guide: "kai", text: "Drag the Moon all the way around Earth!", action: "orbitOnce",
+            more: "You can use the arrow buttons too. Follow the dotted path!" },
+          { id: "trip-done", guide: "kai", text: "You did it! That was one whole month!",
+            more: "As the Moon travels, we see different amounts of the Moon's sunny side. Those are the Moon's phases." },
+        ],
+      },
+      {
+        id: "solar", icon: "🌑", title: "Make a solar eclipse!",
+        setup: ["hideShadowCones", "hideLightRays", "moonStart", "resetView"],
+        steps: [
+          { id: "solar-intro", guide: "kai", text: "Let's make a solar eclipse!",
+            more: "Solar means 'of the Sun'. In a solar eclipse, the Sun gets covered up." },
+          { id: "solar-task", guide: "kai", text: "Who's in the middle? Put the Moon between the Sun and Earth!",
+            action: "alignSolar",
+            more: "Drag the Moon toward the Sun, or use the arrow buttons. The Moon clicks into place when you're close." },
+          { id: "solar-shadow", guide: "kai", text: "You did it! The Moon's shadow falls on Earth.",
+            sceneEffect: "showShadowCones",
+            more: "A solar eclipse only happens at new moon. The Moon's path is a little tilted, so most months the Moon's shadow misses Earth." },
+          { id: "solar-ground", guide: "kai", text: "Let's see what people on Earth see!", action: "groundSolar",
+            more: "Only people inside the small dark shadow spot see the Sun get covered all the way." },
+          { id: "solar-safety", guide: "kai", icon: "glasses", text: "Remember: never look at the Sun without eclipse glasses!",
+            more: "Regular sunglasses are not enough. Only special eclipse glasses keep your eyes safe." },
+          { id: "solar-recap", guide: "kai", text: "Solar eclipse: the Moon is in the middle!",
+            more: "Sun, Moon, Earth, all in a straight line. The Moon blocks the sunlight." },
+        ],
+      },
+      {
+        id: "lunar", icon: "🌕", title: "Make a lunar eclipse!",
+        setup: ["hideShadowCones", "hideLightRays", "moonStart", "resetView"],
+        steps: [
+          { id: "lunar-intro", guide: "kai", text: "Now let's make a lunar eclipse!",
+            more: "Lunar means 'of the Moon'. In a lunar eclipse, the Moon gets dark and turns red." },
+          { id: "lunar-task", guide: "kai", text: "Who's in the middle this time? Put Earth between the Sun and Moon!",
+            action: "alignLunar",
+            more: "Move the Moon to the far side of Earth, away from the Sun." },
+          { id: "lunar-shadow", guide: "kai", text: "You did it! The Moon is inside Earth's shadow.",
+            more: "A lunar eclipse only happens at full moon, when the Moon is on the far side of Earth." },
+          { id: "lunar-watch", guide: "stella", text: "Keep watching the Moon…", action: "redMoon",
+            more: "Earth's shadow is big, so the Moon stays inside the shadow for a long time." },
+          { id: "lunar-red", guide: "stella", text: "Look! The Moon turned red!",
+            more: "The Moon doesn't go completely dark. A little sunlight still reaches the Moon." },
+          { id: "lunar-why", guide: "stella", text: "Earth's air bends some sunlight onto the Moon, like a sunset!",
+            more: "Air scatters blue light away and lets red light through. During a lunar eclipse, light from all the sunsets around Earth shines on the Moon!" },
+          { id: "lunar-ground", guide: "kai", text: "Want to see the red Moon from Earth?", action: "groundLunar", optional: true,
+            more: "A lunar eclipse is safe to look at with just your eyes. Tap Next to skip." },
+          { id: "lunar-recap", guide: "kai", text: "Lunar eclipse: Earth is in the middle!",
+            more: "Sun, Earth, Moon, all in a straight line. Earth blocks the sunlight from reaching the Moon." },
+          { id: "both-done", guide: "kai", text: "Amazing work! You made both kinds of eclipse!",
+            more: "Solar eclipse: the Moon is in the middle. Lunar eclipse: Earth is in the middle." },
+        ],
+      },
+      // Chapters 6 (recap quiz) and 7 (free play) arrive in build step 6.
+      { id: "quiz", icon: "❓", title: "Who's in the middle?", comingSoon: true, steps: [] },
+      { id: "free", icon: "🎉", title: "Free play", comingSoon: true, steps: [] },
+    ];
+
+    // One-line facts shown when the child taps a body in chapter 1.
+    const BODY_FACTS = {
+      sun: "☀️ A giant ball of hot, glowing gas",
+      earth: "🌍 Our home planet. Earth spins once a day.",
+      moon: "🌙 A ball of rock that travels around Earth",
+    };
+    const TASK_TEXT = {
+      tapBodies: (n) => `👆 Tapped ${n} of 3`,
+      orbitOnce: "🌙 Moon trip",
+      almost: "Almost! Keep going! ✨",
+      done: "You did it! 🎉",
+    };
+
+    /* ---------- Short scripts for free exploration and the ground view ---------- */
     const SCRIPTS = {
-      welcome: [
-        { guide: "stella", text: "Hi! I'm Stella. I'm a star, just like the Sun!",
-          more: "The Sun is a star too! Of all the stars, the Sun is the closest one to Earth. That's why the Sun looks so big and bright." },
-        { guide: "kai", text: "And I'm Captain Kai! Let's find out how eclipses work.",
-          more: "An eclipse happens when one ball in space blocks the sunlight from reaching another ball." },
-        { guide: "kai", text: "Drag the Moon, or tap the arrows to move the Moon!",
-          more: "The real Moon travels all the way around Earth. One trip around Earth takes about a month!" },
-      ],
       almost: "Almost! Keep going!",
       alignSolar: [
         { guide: "kai", text: "The Moon is in the middle! The Moon's shadow falls on Earth.",
@@ -1709,10 +2036,236 @@
       ],
     };
 
-    // While exploring freely, the guides react to what the child does.
-    // (Lessons in step 5 can switch this off with reactions.enabled = false.)
-    const reactions = { enabled: true };
 
+    /* ---------- Lesson engine ---------- */
+    const lesson = {
+      active: false,
+      chapter: 0,
+      step: 0,
+      completed: new Set(),
+      stepKey: null,                 // which step the per-step memory below belongs to
+      done: false,                   // has the child done this step's action?
+      taps: new Set(),
+      travel: 0,                     // how far the child pushed the Moon (radians)
+      token: 0,                      // ignores answers from an older bubble
+    };
+    const reactions = { enabled: true }; // free-exploration reactions, off during lessons
+
+    const progressEl = document.getElementById("progress");
+    const dotsEl = document.getElementById("progress-dots");
+    const titleEl = document.getElementById("progress-title");
+    const chipEl = document.getElementById("task-chip");
+    const labelsEl = document.getElementById("fact-labels");
+
+    const playableChapters = () => LESSONS.filter((c) => !c.comingSoon).length;
+    const currentStep = () => LESSONS[lesson.chapter].steps[lesson.step];
+
+    function applyEffects(effects) {
+      [].concat(effects || []).forEach((fx) => {
+        if (fx === "showShadowCones") setShadowCones(true);
+        else if (fx === "hideShadowCones") setShadowCones(false);
+        else if (fx === "showLightRays") setLightRays(true);
+        else if (fx === "hideLightRays") setLightRays(false);
+        else if (fx === "resetView") resetView();
+        else if (fx === "moonStart") setRawAngle(Math.PI / 2); // behind Earth (top of the screen), 90° from both line-ups
+      });
+    }
+
+    function isActionAlreadyDone(action) {
+      if (action === "alignSolar") return state.aligned === "solar";
+      if (action === "alignLunar") return state.aligned === "lunar";
+      if (action === "redMoon") return state.redness > 0.9;
+      return false;
+    }
+
+    function renderProgress() {
+      dotsEl.replaceChildren(...LESSONS.map((c, i) => {
+        const li = document.createElement("li");
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "chapter-dot";
+        b.textContent = c.icon;
+        const done = lesson.completed.has(i);
+        const current = lesson.active && i === lesson.chapter;
+        b.classList.toggle("done", done);
+        b.classList.toggle("current", current);
+        // You can go back to any chapter you finished (or restart the one you're in).
+        b.disabled = c.comingSoon || !(done || current);
+        b.setAttribute("aria-label", `Chapter ${i + 1}: ${c.title}${c.comingSoon ? " (coming soon)" : done ? " (done)" : ""}`);
+        if (current) b.setAttribute("aria-current", "step");
+        b.title = b.getAttribute("aria-label");
+        b.addEventListener("click", () => startChapter(i));
+        li.appendChild(b);
+        return li;
+      }));
+      const c = LESSONS[lesson.chapter];
+      titleEl.textContent = lesson.active ? `${lesson.chapter + 1} · ${c.title}` : "You finished the lessons! 🎉";
+      progressEl.hidden = false;
+    }
+
+    function setChip(html, done = false) {
+      chipEl.innerHTML = html;
+      chipEl.hidden = !html;
+      chipEl.classList.toggle("done", done);
+    }
+
+    // --- Fact labels that float above the bodies in chapter 1 ---
+    const factLabels = new Map(); // body → element
+    const labelAnchor = new THREE.Vector3();
+    function showFact(body) {
+      if (factLabels.has(body)) return;
+      const el = document.createElement("div");
+      el.className = "fact-label";
+      el.textContent = BODY_FACTS[body];
+      if (body === "moon") el.classList.add("below"); // keeps the Moon's label off Earth's
+      labelsEl.appendChild(el);
+      factLabels.set(body, el);
+    }
+    function clearFacts() { factLabels.forEach((el) => el.remove()); factLabels.clear(); }
+    function updateFactLabels() {
+      if (!factLabels.size) return;
+      const w = window.innerWidth, h = window.innerHeight;
+      factLabels.forEach((el, body) => {
+        const below = el.classList.contains("below");
+        if (body === "sun") labelAnchor.copy(sun.position).y += CONFIG.sun.radius + 1;
+        else if (body === "earth") labelAnchor.copy(earthSystem.position).y += CONFIG.earth.radius + 0.8;
+        else { moon.getWorldPosition(labelAnchor); labelAnchor.y -= CONFIG.moon.radius + 0.5; }
+        labelAnchor.project(camera);
+        const x = (labelAnchor.x * 0.5 + 0.5) * w, y = (-labelAnchor.y * 0.5 + 0.5) * h;
+        // Keep the label on screen; the little tail still points at the body.
+        const half = el.offsetWidth / 2, margin = 12;
+        const cx = Math.min(Math.max(x, half + margin), w - half - margin);
+        el.style.setProperty("--tail-x", `${Math.min(Math.max(50 + ((x - cx) / el.offsetWidth) * 100, 10), 90).toFixed(0)}%`);
+        const dy = below ? "12px" : "calc(-100% - 12px)";
+        el.style.transform = `translate(${(cx - half).toFixed(0)}px, ${y.toFixed(0)}px) translateY(${dy})`;
+        el.style.display = labelAnchor.z < 1 ? "" : "none";
+      });
+    }
+
+    function refreshTaskUI() {
+      const step = currentStep();
+      if (!lesson.active || !step) { setChip(""); return; }
+      if (step.action === "tapBodies") setChip(TASK_TEXT.tapBodies(lesson.taps.size), lesson.done);
+      else if (step.action === "orbitOnce") {
+        const pct = Math.min(100, Math.round((lesson.travel / TAU) * 100));
+        setChip(`${TASK_TEXT.orbitOnce} <span class="meter"><span style="width:${pct}%"></span></span> ${pct}%`, lesson.done);
+      } else setChip("");
+    }
+
+    function markActionDone() {
+      if (lesson.done) return;
+      lesson.done = true;
+      refreshTaskUI();
+      Guides.allowNext();
+      Guides.cheer(TASK_TEXT.done, 0);
+    }
+
+    function runStep() {
+      const step = currentStep();
+      const key = `${lesson.chapter}.${lesson.step}`;
+      if (lesson.stepKey !== key) {           // a fresh step (not just showing the same one again)
+        lesson.stepKey = key;
+        lesson.done = isActionAlreadyDone(step.action);
+        lesson.taps = new Set();
+        lesson.travel = 0;
+        if (step.action !== "tapBodies") clearFacts();
+        applyEffects(step.sceneEffect);
+      }
+      refreshTaskUI();
+      const token = ++lesson.token;
+      const actions = [];
+      if (step.action === "groundSolar") actions.push({ label: "See it from Earth! 🌍", onClick: () => openGroundView("solar") });
+      if (step.action === "groundLunar") actions.push({ label: "See it from Earth! 🌍", onClick: () => openGroundView("lunar") });
+      const line = {
+        guide: step.guide, text: step.text, more: step.more, icon: step.icon, lockSeconds: step.lockSeconds,
+        next: !step.action || step.optional || lesson.done,
+        actions,
+      };
+      Guides.say([line], { tag: "lesson" }).then((finished) => {
+        if (finished && token === lesson.token && lesson.active) advance();
+      });
+      if (lesson.done && step.action && !step.optional) Guides.cheer(TASK_TEXT.done, 0);
+    }
+
+    function advance() {
+      lesson.step++;
+      if (lesson.step < LESSONS[lesson.chapter].steps.length) { runStep(); return; }
+      // Chapter finished
+      lesson.completed.add(lesson.chapter);
+      clearFacts();
+      emit("chapterdone", { chapter: lesson.chapter, id: LESSONS[lesson.chapter].id });
+      if (lesson.chapter + 1 < playableChapters()) startChapter(lesson.chapter + 1);
+      else endLessons();
+    }
+
+    function startChapter(i) {
+      const c = LESSONS[i];
+      if (!c || c.comingSoon) return;
+      if (ground.open) return;
+      lesson.active = true;
+      reactions.enabled = false;
+      lesson.chapter = i;
+      lesson.step = 0;
+      lesson.stepKey = null;
+      clearFacts();
+      applyEffects(c.setup);
+      renderProgress();
+      emit("chapterstart", { chapter: i, id: c.id });
+      runStep();
+    }
+
+    function endLessons() {
+      lesson.active = false;
+      reactions.enabled = true;
+      setChip("");
+      clearFacts();
+      renderProgress();
+      emit("lessonsdone");
+    }
+
+    function startLessons() { startChapter(0); }
+
+    // --- What the child does → lesson actions ---
+    const onAction = (fn) => (e) => {
+      if (!lesson.active) return;
+      const step = currentStep();
+      if (step && step.action) fn(step, e.detail || {});
+    };
+    events.addEventListener("bodytap", onAction((step, d) => {
+      if (step.action !== "tapBodies") return;
+      showFact(d.body);
+      lesson.taps.add(d.body);
+      refreshTaskUI();
+      if (lesson.taps.size === 3) markActionDone();
+    }));
+    events.addEventListener("moonpush", onAction((step, d) => {
+      if (step.action !== "orbitOnce" || lesson.done) return;
+      lesson.travel += Math.min(Math.abs(d.delta), deg(40)); // big jumps (finger crossing Earth) count a little
+      refreshTaskUI();
+      if (lesson.travel >= TAU) markActionDone();
+    }));
+    events.addEventListener("alignment", onAction((step, d) => {
+      if ((step.action === "alignSolar" && d.type === "solar") || (step.action === "alignLunar" && d.type === "lunar")) markActionDone();
+    }));
+    events.addEventListener("near", onAction((step, d) => {
+      const want = step.action === "alignSolar" ? "solar" : step.action === "alignLunar" ? "lunar" : null;
+      if (want && d.type === want && !lesson.done) Guides.cheer(TASK_TEXT.almost);
+    }));
+    events.addEventListener("redmoon", onAction((step, d) => {
+      if (step.action === "redMoon" && d.on) markActionDone();
+    }));
+    events.addEventListener("groundphase", onAction((step, d) => {
+      if (d.phase === "done" && step.action === `ground${d.type === "solar" ? "Solar" : "Lunar"}`) lesson.done = true;
+    }));
+    // Back from the ground view: move on if the eclipse was watched, otherwise show the step again.
+    events.addEventListener("groundview", (e) => {
+      if (!lesson.active || e.detail.open) return;
+      const step = currentStep();
+      if (step && step.action && step.action.startsWith("ground") && lesson.done) advance();
+      else runStep();
+    });
+
+    /* ---------- Free exploration: the guides react to what the child does ---------- */
     events.addEventListener("near", (e) => {
       if (reactions.enabled && e.detail.type && !ground.open) Guides.quick("kai", SCRIPTS.almost, 1800);
     });
@@ -1732,16 +2285,12 @@
     events.addEventListener("redmoon", (e) => {
       if (reactions.enabled && e.detail.on && !ground.open) Guides.enqueue(SCRIPTS.redMoon, { tag: "redmoon" });
     });
+    // The ground view always narrates its big moments, in lessons and in free exploration.
     events.addEventListener("groundphase", (e) => {
-      if (!reactions.enabled) return;
       if (e.detail.phase !== "total") return;
       if (e.detail.type === "solar") Guides.say(SCRIPTS.solarTotal, { tag: "ground" });
       else Guides.enqueue(SCRIPTS.redMoon, { tag: "ground" });
     });
-
-    function startWelcome() {
-      if (reactions.enabled) Guides.say(SCRIPTS.welcome, { tag: "welcome" });
-    }
 
     /* =====================================================================
        UI
@@ -2131,7 +2680,9 @@
       /** Jump the ground-view animation to a time in seconds (for checking frames). */
       seekGround(t) { ground.t = t; renderGround(); },
       setGroundScene,
-      Guides, SCRIPTS, reactions,
+      Guides, SCRIPTS, reactions, LESSONS, startChapter,
+      get lesson() { return { ...lesson, completed: [...lesson.completed] }; },
+      tapBody(body) { emit("bodytap", { body }); },
       events,
       THREE, scene, camera, renderer, controls, homeCameraPosition,
     };
@@ -2158,6 +2709,8 @@
       earth.rotation.y += dt * CONFIG.earth.spinSpeed;
       updateMoon(dt);
       updateEclipseEffects(dt);
+      updateLightRays(dt);
+      updateFactLabels();
 
       if (!CONFIG.reducedMotion) {
         sunGlow.scale.setScalar(CONFIG.sun.glowSize * (1 + Math.sin(t * 1.6) * 0.025));
@@ -2180,7 +2733,7 @@
       tick();
       window.__eclipseReady = true;
       document.getElementById("overlay").classList.add("hidden");
-      setTimeout(startWelcome, CONFIG.reducedMotion ? 0 : 700);
+      setTimeout(startLessons, CONFIG.reducedMotion ? 0 : 700);
     });
   </script>
 </body>
