@@ -29,6 +29,7 @@
       -webkit-tap-highlight-color: transparent;
       user-select: none;
       -webkit-user-select: none;
+      -webkit-touch-callout: none; /* no iOS long-press menu while dragging the Moon */
     }
     #scene {
       position: fixed;
@@ -59,6 +60,7 @@
     }
     .btn:hover { background: #fff; }
     .btn:active { transform: scale(0.94); }
+    button { touch-action: manipulation; } /* no double-tap zoom delay on tablets */
     .btn:disabled { opacity: 0.5; cursor: default; transform: none; }
     .btn:focus-visible { outline: 4px solid var(--ui-accent); outline-offset: 3px; }
 
@@ -311,6 +313,7 @@
     .bubble.pop { animation: bubble-in 0.3s ease-out; }
     .bubble-name { font-size: 15px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #8a7fc4; }
     .side-left .bubble-name { color: #d99400; }
+    .side-right .bubble-name { padding-left: 34px; } /* clear of the ✕ button */
     .bubble-body { display: flex; align-items: center; gap: 12px; }
     .bubble-icon { flex: 0 0 auto; width: 76px; }
     .bubble-icon[hidden] { display: none; }
@@ -458,6 +461,17 @@
       line-height: 22px;
     }
     .chapter-dot:disabled { cursor: default; opacity: 0.45; background: rgba(255, 255, 255, 0.6); }
+    #progress-row { display: flex; align-items: center; gap: 8px; }
+    #btn-start-over {
+      min-width: 40px;
+      min-height: 40px;
+      width: 40px;
+      padding: 0;
+      font-size: 20px;
+      background: rgba(255, 255, 255, 0.85);
+      box-shadow: none;
+    }
+    #btn-start-over[hidden] { display: none; }
     #progress-title {
       padding: 4px 14px;
       border-radius: 999px;
@@ -590,7 +604,8 @@
       .quiz-answers { gap: 8px; }
       .quiz-answer { min-height: 104px; padding: 6px; font-size: 15px; border-width: 3px; }
       .quiz-answer .big-emoji { font-size: 42px; }
-      #btn-free-play .label { display: none; }
+      #btn-free-play .label, #btn-reset-view .label, #btn-cones .label { display: none; }
+      #btn-free-play, #btn-reset-view, #btn-cones { padding: 0; width: var(--tap); font-size: 24px; }
     }
     @media (prefers-reduced-motion: reduce) {
       .quiz-answer.wrong, .quiz-answer.right, #quiz { animation: none; }
@@ -668,6 +683,12 @@
     @media (prefers-reduced-motion: reduce) {
       .btn, #overlay, #ground { transition: none; }
       #btn-ground { animation: none; }
+      /* Safety net: every remaining CSS animation/transition becomes instant. */
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
     }
   </style>
 
@@ -699,13 +720,16 @@
 
   <nav id="progress" aria-label="Chapters" hidden>
     <ol id="progress-dots"></ol>
-    <div id="progress-title"></div>
+    <div id="progress-row">
+      <div id="progress-title"></div>
+      <button id="btn-start-over" class="btn" type="button" aria-label="Start the lessons over" title="Start the lessons over" hidden>↺</button>
+    </div>
     <div id="task-chip" role="status" hidden></div>
   </nav>
 
   <div id="hud-top-right">
     <button id="btn-free-play" class="btn" type="button" aria-label="Free play" hidden>🎉 <span class="label">Free play</span></button>
-    <button id="btn-cones" class="btn btn-toggle" type="button" aria-pressed="false">🔦 Shadows</button>
+    <button id="btn-cones" class="btn btn-toggle" type="button" aria-pressed="false" aria-label="Shadows">🔦 <span class="label">Shadows</span></button>
     <button id="btn-sound" class="btn btn-round" type="button" aria-label="Sound effects on" aria-pressed="true">🔊</button>
   </div>
 
@@ -716,7 +740,7 @@
   </div>
 
   <div id="hud-bottom-right">
-    <button id="btn-reset-view" class="btn" type="button" aria-label="Reset view">🎯 Reset view</button>
+    <button id="btn-reset-view" class="btn" type="button" aria-label="Reset view">🎯 <span class="label">Reset view</span></button>
   </div>
 
   <button id="btn-ground" class="btn btn-big" type="button" hidden>See it from Earth! 🌍</button>
@@ -2113,7 +2137,7 @@
           { id: "lunar-red", guide: "stella", text: "Look! The Moon turned red!",
             more: "The Moon doesn't go completely dark. A little sunlight still reaches the Moon." },
           { id: "lunar-why", guide: "stella", text: "Earth's air bends some sunlight onto the Moon, like a sunset!",
-            more: "Air scatters blue light away and lets red light through. During a lunar eclipse, light from all the sunsets around Earth shines on the Moon!" },
+            more: "Air bounces blue light away and lets red light through. During a lunar eclipse, light from all the sunsets around Earth shines on the Moon!" },
           { id: "lunar-ground", guide: "kai", text: "Want to see the red Moon from Earth?", action: "groundLunar", optional: true,
             more: "A lunar eclipse is safe to look at with just your eyes. Tap Next to skip." },
           { id: "lunar-recap", guide: "kai", text: "Lunar eclipse: Earth is in the middle!",
@@ -2239,7 +2263,7 @@
         { guide: "stella", text: "Look! The Moon is turning red!",
           more: "The Moon doesn't go completely dark. A little sunlight still reaches the Moon." },
         { guide: "stella", text: "Earth's air bends some sunlight onto the Moon, like a sunset!",
-          more: "Air scatters blue light away and lets red light through. That's why sunsets look red. During a lunar eclipse, light from all the sunsets around Earth shines on the Moon!" },
+          more: "Air bounces blue light away and lets red light through. That's why sunsets look red. During a lunar eclipse, light from all the sunsets around Earth shines on the Moon!" },
       ],
       solarSafety: [
         { guide: "kai", icon: "glasses", lockSeconds: 2,
@@ -2327,6 +2351,11 @@
     function loadProgress() {
       try { return JSON.parse(localStorage.getItem(PROGRESS_KEY)) || null; } catch { return null; }
     }
+    const startOverBtn = document.getElementById("btn-start-over");
+    startOverBtn.addEventListener("click", () => {
+      // A grown-up check, so a curious finger doesn't wipe a child's progress by accident.
+      if (window.confirm("Start all the lessons again from chapter 1?")) resetProgress();
+    });
     function resetProgress() {
       try { localStorage.removeItem(PROGRESS_KEY); } catch { /* fine */ }
       lesson.completed.clear();
@@ -2459,6 +2488,7 @@
         : freePlay.active ? "🎉 Free play" : "You finished the lessons! 🎉";
       progressEl.hidden = false;
       freePlayBtn.hidden = !(freePlay.unlocked && !freePlay.active);
+      startOverBtn.hidden = !(lesson.completed.size > 0 || freePlay.unlocked);
     }
 
     function setChip(html, done = false) {
@@ -2495,9 +2525,10 @@
         labelAnchor.project(camera);
         const x = (labelAnchor.x * 0.5 + 0.5) * w, y = (-labelAnchor.y * 0.5 + 0.5) * h;
         // Keep the label on screen; the little tail still points at the body.
-        const half = el.offsetWidth / 2, margin = 12;
+        if (!el._w) el._w = el.offsetWidth;   // measure once; reading layout every frame is slow on tablets
+        const half = el._w / 2, margin = 12;
         const cx = Math.min(Math.max(x, half + margin), w - half - margin);
-        el.style.setProperty("--tail-x", `${Math.min(Math.max(50 + ((x - cx) / el.offsetWidth) * 100, 10), 90).toFixed(0)}%`);
+        el.style.setProperty("--tail-x", `${Math.min(Math.max(50 + ((x - cx) / el._w) * 100, 10), 90).toFixed(0)}%`);
         const dy = below ? "12px" : "calc(-100% - 12px)";
         el.style.transform = `translate(${(cx - half).toFixed(0)}px, ${y.toFixed(0)}px) translateY(${dy})`;
         el.style.display = labelAnchor.z < 1 ? "" : "none";
@@ -2797,11 +2828,18 @@
     window.addEventListener("keydown", () => Sound.unlock(), { capture: true });
 
     const soundBtn = document.getElementById("btn-sound");
-    soundBtn.addEventListener("click", () => {
-      Sound.muted = !Sound.muted;
+    const MUTE_KEY = "eclipse-explorer.muted";
+    function showSoundState() {
       soundBtn.textContent = Sound.muted ? "🔇" : "🔊";
       soundBtn.setAttribute("aria-label", Sound.muted ? "Sound effects off" : "Sound effects on");
       soundBtn.setAttribute("aria-pressed", String(!Sound.muted));
+    }
+    try { Sound.muted = localStorage.getItem(MUTE_KEY) === "1"; } catch { /* fine */ }
+    showSoundState();
+    soundBtn.addEventListener("click", () => {
+      Sound.muted = !Sound.muted;
+      try { localStorage.setItem(MUTE_KEY, Sound.muted ? "1" : "0"); } catch { /* fine */ }
+      showSoundState();
     });
 
     /* ---------- "See the real sizes!" ----------
@@ -2931,6 +2969,7 @@
     const groundEl = document.getElementById("ground");
     const $g = (id) => document.getElementById(id);
     const ground = { open: false, type: null, phase: "idle", t: 0, totalAnnounced: false };
+    let groundCoveredAt = Infinity; // when the ground view fully covers the 3D scene
 
     // Stars for the ground sky (fixed pattern)
     {
@@ -3114,6 +3153,7 @@
       renderGround();
       document.body.classList.add("ground-open");
       groundEl.classList.add("open");
+      groundCoveredAt = performance.now() + (CONFIG.reducedMotion ? 0 : 550); // after the fade-in
       groundEl.setAttribute("aria-hidden", "false");
       refreshGroundButton();
       emit("groundview", { type, open: true });
@@ -3224,6 +3264,7 @@
       startFreePlay, resetProgress, saveProgress, setRealScale,
       /** Testing aid: finish the real-sizes animation right away. */
       skipScaleAnimation() { updateRealScale(1e3); },
+      get quality() { return { ...quality, pixelRatio: renderer.getPixelRatio(), shadowMap: sunLight.shadow.mapSize.x }; },
       get realScale() { return { ...realScale }; },
       tapBody(body) { emit("bodytap", { body }); },
       events,
@@ -3236,19 +3277,55 @@
     const clock = new THREE.Clock();
     const easeInOut = (t) => t * t * (3 - 2 * t);
 
+    /* Automatic quality: if frames are slow (below ~40 fps on average), step down
+       the pixel ratio, then the shadow-map size. It never steps back up, so the
+       picture doesn't flicker between levels. Aim: smooth on a mid-range tablet. */
+    const quality = { level: 0, frames: 0, time: 0 };
+    const QUALITY_LEVELS = [
+      { maxPixelRatio: 2,   shadowMap: CONFIG.shadows.mapSize },
+      { maxPixelRatio: 1.5, shadowMap: CONFIG.shadows.mapSize },
+      { maxPixelRatio: 1,   shadowMap: 1024 },
+    ];
+    function applyQuality() {
+      const q = QUALITY_LEVELS[quality.level];
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, q.maxPixelRatio));
+      onResize();
+      if (sunLight.shadow.mapSize.x !== q.shadowMap) {
+        sunLight.shadow.mapSize.set(q.shadowMap, q.shadowMap);
+        if (sunLight.shadow.map) { sunLight.shadow.map.dispose(); sunLight.shadow.map = null; }
+      }
+      emit("quality", { level: quality.level });
+    }
+    function watchPerformance(rawDt) {
+      // Ignore pauses (hidden tab, ground view) and the first second after loading.
+      if (document.hidden || rawDt > 0.25 || clock.elapsedTime < 1) return;
+      quality.frames++;
+      quality.time += rawDt;
+      if (quality.frames < 120) return;
+      const avg = quality.time / quality.frames;
+      quality.frames = 0;
+      quality.time = 0;
+      if (avg > 1 / 40 && quality.level < QUALITY_LEVELS.length - 1) {
+        quality.level++;
+        applyQuality();
+      }
+    }
+
     function tick() {
-      const dt = Math.min(clock.getDelta(), 0.1);
+      const rawDt = clock.getDelta();
+      const dt = Math.min(rawDt, 0.1);
       const t = clock.elapsedTime;
 
       // While the ground view fully covers the screen, pause the 3D scene to save battery.
       if (ground.open) {
         updateGround(dt);
-        if (groundEl.classList.contains("open") && getComputedStyle(groundEl).opacity === "1") {
+        if (performance.now() >= groundCoveredAt) {
           requestAnimationFrame(tick);
           return;
         }
       }
 
+      watchPerformance(rawDt);
       earth.rotation.y += dt * CONFIG.earth.spinSpeed;
       updateMoon(dt);
       updateEclipseEffects(dt);
