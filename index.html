@@ -59,6 +59,7 @@
     }
     .btn:hover { background: #fff; }
     .btn:active { transform: scale(0.94); }
+    .btn:disabled { opacity: 0.5; cursor: default; transform: none; }
     .btn:focus-visible { outline: 4px solid var(--ui-accent); outline-offset: 3px; }
 
     #hud-bottom-right {
@@ -595,19 +596,53 @@
       .quiz-answer.wrong, .quiz-answer.right, #quiz { animation: none; }
     }
 
-    /* ---------- UI: labels ---------- */
-    #scale-label {
+    /* ---------- Real-sizes toggle (bottom-left); its small top line is the "Not to scale" label ---------- */
+    #btn-scale {
       position: fixed;
       left: max(16px, env(safe-area-inset-left));
       bottom: max(16px, env(safe-area-inset-bottom));
-      padding: 6px 14px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.14);
-      color: #e8e2ff;
-      font-size: 15px;
-      font-weight: 500;
-      pointer-events: none;
+      flex-direction: column;
+      gap: 2px;
+      min-height: 64px;
+      padding: 6px 18px;
+      line-height: 1.1;
     }
+    #btn-scale .scale-note { font-size: 13px; font-weight: 600; color: #7a6fb5; }
+    #btn-scale .scale-main { font-size: 19px; }
+    #btn-scale[aria-pressed="true"] { background: #fff3c4; border: 3px solid var(--ui-accent); }
+    #btn-scale:disabled { opacity: 0.5; cursor: default; }
+    /* Narrower screens: just the 🔭 icon under the small note, so the Moon arrows have room */
+    @media (max-width: 860px) {
+      #btn-scale { padding: 6px 12px; min-width: 64px; }
+      #btn-scale .scale-main .label { display: none; }
+      #btn-scale .scale-main { font-size: 24px; }
+      #btn-scale .scale-note { font-size: 11px; }
+    }
+
+    /* Labels in real-sizes mode: tiny Earth and Moon dots, and the giant Sun off to the side */
+    .real-label { font-size: 16px; padding: 6px 12px; }
+    #sun-far-label {
+      position: fixed;
+      z-index: 4;
+      left: max(16px, env(safe-area-inset-left));
+      top: 50%;
+      transform: translateY(-50%);
+      max-width: 220px;
+      padding: 10px 16px;
+      border-radius: 18px;
+      background: #fff;
+      color: var(--ui-text);
+      font-size: 19px;
+      font-weight: 700;
+      line-height: 1.2;
+      box-shadow: var(--ui-shadow);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.6s ease;
+    }
+    #sun-far-label small { display: block; margin-top: 4px; font-size: 14px; font-weight: 500; color: #5a4f99; }
+    #sun-far-label.show { opacity: 1; }
+    @media (prefers-reduced-motion: reduce) { #sun-far-label { transition: none; } }
 
     /* ---------- Loading / error overlay ---------- */
     #overlay {
@@ -648,7 +683,11 @@
 <body>
   <canvas id="scene" aria-label="A 3D view of the Sun, the Earth and the Moon"></canvas>
 
-  <div id="scale-label">Not to scale</div>
+  <button id="btn-scale" class="btn" type="button" aria-pressed="false">
+    <span class="scale-note" id="scale-note">Not to scale</span>
+    <span class="scale-main">🔭 <span class="label" id="scale-label">See the real sizes!</span></span>
+  </button>
+  <div id="sun-far-label" aria-hidden="true">← The Sun is WAY over here!<small>Really, the Sun is about 400 times farther away than the Moon.</small></div>
 
   <div id="fact-labels" aria-live="polite"></div>
 
@@ -922,6 +961,15 @@
       glow: { color: 0xffe08a },
       cones: { earthLength: 16, opacity: 1 },
       redMoon: { tint: 0xe0a080, emissive: 0xb0401c, emissiveIntensity: 0.75, riseSeconds: 3 },
+      // True relative sizes (Earth radius = 0.2 units). The Sun's distance is squeezed so it fits.
+      realScale: {
+        earthRadius: 0.2,              // Earth
+        moonRadius: 0.2 * 0.273,       // the Moon is about 27% as wide as Earth
+        orbitRadius: 0.2 * 60.3,       // the Moon is about 60 Earth-radii away (384,000 km)
+        sunRadius: 0.2 * 109,          // the Sun is 109 times wider than Earth
+        seconds: 2.2,
+        cameraTargetX: 0,
+      },
       reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     };
 
@@ -1227,11 +1275,18 @@
     );
     moon.add(moonHit);
 
+    // Current sizes. They change smoothly when "See the real sizes!" is switched on or off.
+    const sizes = {
+      orbitRadius: CONFIG.moon.orbitRadius,
+      earthRadius: CONFIG.earth.radius,
+      moonRadius: CONFIG.moon.radius,
+    };
+
     function placeMoon(angle) {
       moon.position.set(
-        Math.cos(angle) * CONFIG.moon.orbitRadius,
+        Math.cos(angle) * sizes.orbitRadius,
         0,
-        -Math.sin(angle) * CONFIG.moon.orbitRadius
+        -Math.sin(angle) * sizes.orbitRadius
       );
       moon.rotation.y = angle; // same face toward Earth, like the real Moon
     }
@@ -1366,11 +1421,11 @@
     // How deep the Moon sits inside Earth's (straight, sun-parallel) shadow: 0 = outside, 1 = fully in.
     function moonShadowDepth() {
       const a = state.moonAngle;
-      const along = Math.cos(a) * CONFIG.moon.orbitRadius;
+      const along = Math.cos(a) * sizes.orbitRadius;
       if (along <= 0) return 0; // Moon is on the Sun's side of Earth
-      const lateral = Math.abs(Math.sin(a)) * CONFIG.moon.orbitRadius;
+      const lateral = Math.abs(Math.sin(a)) * sizes.orbitRadius;
       return THREE.MathUtils.clamp(
-        (CONFIG.earth.radius + CONFIG.moon.radius - lateral) / (2 * CONFIG.moon.radius), 0, 1);
+        (sizes.earthRadius + sizes.moonRadius - lateral) / (2 * sizes.moonRadius), 0, 1);
     }
     const moonWhite = new THREE.Color(0xffffff);
     const moonTint = new THREE.Color(CONFIG.redMoon.tint);
@@ -1483,7 +1538,7 @@
         emit("alignment", { type: aligned });
       }
 
-      const near = !aligned && nearest.off < deg(cfg.nearDeg) ? nearest.type : null;
+      const near = interactionRules.snapEnabled && !aligned && nearest.off < deg(cfg.nearDeg) ? nearest.type : null;
       if (near !== state.near) {
         state.near = near;
         emit("near", { type: near });
@@ -2217,6 +2272,14 @@
         { guide: "stella", text: "The Moon turned red, like a sunset!",
           more: "Earth's air bends a little red sunlight onto the Moon. That's why the Moon glows red instead of going dark." },
       ],
+      realSizes: [
+        { guide: "kai", text: "Space is really, really big!",
+          more: "The Moon is about 384,000 km away from Earth. About 30 Earths could fit in the gap between Earth and the Moon!" },
+        { guide: "stella", text: "The Sun is so big that 109 Earths could line up across the Sun!",
+          more: "The real Sun is also much farther away: about 400 times farther than the Moon. That's too far to fit on any screen!" },
+        { guide: "kai", text: "Tap the 🔭 button again to go back to the friendly view.",
+          more: "The friendly view makes everything bigger and closer, so eclipses are easier to see. Lessons wait until you come back." },
+      ],
       lunarSafe: [
         { guide: "kai", text: "Watching a lunar eclipse is safe. You don't need glasses!",
           more: "A lunar eclipse happens at night and can last more than an hour. Binoculars make the red Moon look even cooler!" },
@@ -2416,7 +2479,9 @@
       labelsEl.appendChild(el);
       factLabels.set(body, el);
     }
-    function clearFacts() { factLabels.forEach((el) => el.remove()); factLabels.clear(); }
+    function clearFacts() {
+      factLabels.forEach((el, key) => { if (!key.endsWith("-real")) { el.remove(); factLabels.delete(key); } });
+    }
     function updateFactLabels() {
       if (!factLabels.size) return;
       const w = window.innerWidth, h = window.innerHeight;
@@ -2424,6 +2489,8 @@
         const below = el.classList.contains("below");
         if (body === "sun") labelAnchor.copy(sun.position).y += CONFIG.sun.radius + 1;
         else if (body === "earth") labelAnchor.copy(earthSystem.position).y += CONFIG.earth.radius + 0.8;
+        else if (body === "earth-real") labelAnchor.copy(earthSystem.position).y -= sizes.earthRadius + 0.6;
+        else if (body === "moon-real") { moon.getWorldPosition(labelAnchor); labelAnchor.y += sizes.moonRadius + 0.6; }
         else { moon.getWorldPosition(labelAnchor); labelAnchor.y -= CONFIG.moon.radius + 0.5; }
         labelAnchor.project(camera);
         const x = (labelAnchor.x * 0.5 + 0.5) * w, y = (-labelAnchor.y * 0.5 + 0.5) * h;
@@ -2502,6 +2569,7 @@
     function startChapter(i) {
       const c = LESSONS[i];
       if (!c || ground.open) return;
+      if (realScale.on) setRealScale(false, { resume: false }); // lessons use the friendly view
       if (c.freePlay) { startFreePlay(); return; }
       freePlay.active = false;
       lesson.active = true;
@@ -2562,7 +2630,7 @@
 
     // --- What the child does → lesson actions ---
     const onAction = (fn) => (e) => {
-      if (!lesson.active) return;
+      if (!lesson.active || realScale.on) return; // lessons pause while real sizes are on
       const step = currentStep();
       if (step && step.action) fn(step, e.detail || {});
     };
@@ -2735,6 +2803,101 @@
       soundBtn.setAttribute("aria-label", Sound.muted ? "Sound effects off" : "Sound effects on");
       soundBtn.setAttribute("aria-pressed", String(!Sound.muted));
     });
+
+    /* ---------- "See the real sizes!" ----------
+       Smoothly switches to true relative sizes and distances: Earth shrinks to a
+       small ball, the Moon to a tiny dot 60 Earth-radii away, and the Sun grows
+       into a giant glowing edge at the side (its distance is squeezed to fit).
+       Snapping and lessons pause until the friendly view comes back. */
+    const realScale = { on: false, mix: 0, conesBefore: false, raysBefore: false };
+    const scaleBtn = document.getElementById("btn-scale");
+    const sunFarLabel = document.getElementById("sun-far-label");
+    const lerp = THREE.MathUtils.lerp;
+    const smoothMix = (t) => t * t * (3 - 2 * t);
+    const NORMAL_TARGET_X = CONFIG.camera.target.x;
+
+    /** Apply a blend between the friendly view (0) and real sizes (1). */
+    function applyScaleMix(m) {
+      const R = CONFIG.realScale;
+      sizes.earthRadius = lerp(CONFIG.earth.radius, R.earthRadius, m);
+      sizes.moonRadius = lerp(CONFIG.moon.radius, R.moonRadius, m);
+      sizes.orbitRadius = lerp(CONFIG.moon.orbitRadius, R.orbitRadius, m);
+      earth.scale.setScalar(sizes.earthRadius / CONFIG.earth.radius);
+      const moonScale = sizes.moonRadius / CONFIG.moon.radius;
+      moon.scale.setScalar(moonScale);
+      moonHit.scale.setScalar(lerp(1, 0.6, m) / moonScale); // the tiny Moon stays easy to grab
+      orbitDots.scale.setScalar(sizes.orbitRadius / CONFIG.moon.orbitRadius);
+      placeMoon(state.moonAngle);
+      // Sun: keep its right edge where it was and let it grow huge to the left.
+      const sunR = lerp(CONFIG.sun.radius, R.sunRadius, m);
+      sun.scale.setScalar(sunR / CONFIG.sun.radius);
+      sun.position.x = CONFIG.sun.position.x + CONFIG.sun.radius - sunR;
+      // Shadow box must still cover the (wider) Moon orbit.
+      const cam = sunLight.shadow.camera;
+      const half = Math.max(CONFIG.shadows.halfSize, sizes.orbitRadius + 1.5);
+      cam.left = -half; cam.right = half; cam.top = half; cam.bottom = -half;
+      const d = CONFIG.sun.position.distanceTo(CONFIG.earth.position);
+      cam.near = Math.max(0.5, d - sizes.orbitRadius - 2);
+      cam.far = d + sizes.orbitRadius + 2;
+      cam.updateProjectionMatrix();
+    }
+
+    function updateRealScale(dt) {
+      const want = realScale.on ? 1 : 0;
+      if (realScale.mix === want) return;
+      const step = CONFIG.reducedMotion ? 1 : dt / CONFIG.realScale.seconds;
+      realScale.mix = want > realScale.mix ? Math.min(1, realScale.mix + step) : Math.max(0, realScale.mix - step);
+      applyScaleMix(smoothMix(realScale.mix));
+      sunFarLabel.classList.toggle("show", realScale.mix > 0.85);
+      if (realScale.mix > 0.85) showRealLabels(); else clearRealLabels();
+    }
+    const sunGlowFactor = () => lerp(1, 0.45, smoothMix(realScale.mix)); // a huge glow would hide everything
+
+    function setRealScale(on, { resume = true } = {}) {
+      if (realScale.on === on || ground.open) return;
+      realScale.on = on;
+      interactionRules.snapEnabled = !on;
+      if (on) {
+        realScale.conesBefore = state.conesOn;
+        realScale.raysBefore = raysOn;
+        setShadowCones(false);
+        setLightRays(false);
+      } else {
+        if (realScale.conesBefore) setShadowCones(true);
+        if (realScale.raysBefore) setLightRays(true);
+      }
+      updateAlignment(); // let go of any snapped line-up
+      conesBtn.disabled = on;
+      scaleBtn.setAttribute("aria-pressed", String(on));
+      document.getElementById("scale-label").textContent = on ? "Back to the friendly view" : "See the real sizes!";
+      document.getElementById("scale-note").textContent = on ? "Real sizes!" : "Not to scale";
+      scaleBtn.setAttribute("aria-label", on ? "Back to the friendly view" : "See the real sizes");
+      CONFIG.camera.target.x = on ? CONFIG.realScale.cameraTargetX : NORMAL_TARGET_X;
+      resetView();
+      emit("realscale", { on });
+      if (on) {
+        Guides.say(SCRIPTS.realSizes, { tag: "scale" });
+      } else {
+        if (Guides.tag === "scale") Guides.hide();
+        if (resume && lesson.active) runStep(); // pick the lesson up again
+      }
+    }
+    scaleBtn.addEventListener("click", () => setRealScale(!realScale.on));
+
+    // Small labels pointing at the tiny Earth and Moon (same style as the chapter-1 facts).
+    function showRealLabels() {
+      if (factLabels.has("earth-real")) return;
+      [["earth-real", "🌍 Earth"], ["moon-real", "🌙 Moon"]].forEach(([key, text]) => {
+        const el = document.createElement("div");
+        el.className = "fact-label real-label" + (key === "earth-real" ? " below" : "");
+        el.textContent = text;
+        labelsEl.appendChild(el);
+        factLabels.set(key, el);
+      });
+    }
+    function clearRealLabels() {
+      ["earth-real", "moon-real"].forEach((k) => { const el = factLabels.get(k); if (el) { el.remove(); factLabels.delete(k); } });
+    }
 
     // --- Shadow cones toggle ---
     const conesBtn = document.getElementById("btn-cones");
@@ -3058,7 +3221,10 @@
       Guides, SCRIPTS, reactions, LESSONS, startChapter,
       get lesson() { return { ...lesson, completed: [...lesson.completed] }; },
       get freePlay() { return { ...freePlay }; },
-      startFreePlay, resetProgress, saveProgress,
+      startFreePlay, resetProgress, saveProgress, setRealScale,
+      /** Testing aid: finish the real-sizes animation right away. */
+      skipScaleAnimation() { updateRealScale(1e3); },
+      get realScale() { return { ...realScale }; },
       tapBody(body) { emit("bodytap", { body }); },
       events,
       THREE, scene, camera, renderer, controls, homeCameraPosition,
@@ -3087,10 +3253,13 @@
       updateMoon(dt);
       updateEclipseEffects(dt);
       updateLightRays(dt);
+      updateRealScale(dt);
       updateFactLabels();
 
       if (!CONFIG.reducedMotion) {
-        sunGlow.scale.setScalar(CONFIG.sun.glowSize * (1 + Math.sin(t * 1.6) * 0.025));
+        sunGlow.scale.setScalar(CONFIG.sun.glowSize * sunGlowFactor() * (1 + Math.sin(t * 1.6) * 0.025));
+      } else {
+        sunGlow.scale.setScalar(CONFIG.sun.glowSize * sunGlowFactor());
       }
 
       if (cameraTween) {
