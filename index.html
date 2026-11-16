@@ -300,7 +300,7 @@
 
     .guide-figure { position: relative; flex: 0 0 auto; width: 180px; height: 200px; }
     .guide-figure svg.fig { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-    .fig-stella { filter: drop-shadow(0 0 14px rgba(255, 210, 63, 0.85)); }
+    .fig-stella { filter: drop-shadow(0 0 14px rgba(255, 128, 72, 0.85)); } /* red dwarf glow */
     .fig-kai { filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.35)); }
 
     /* Idle life: Stella twinkles, Kai floats and waves */
@@ -378,7 +378,7 @@
     .side-right .bubble::after { right: -20px; border-left-color: #fff; border-left-width: 14px; }
     .bubble.pop { animation: bubble-in 0.3s ease-out; }
     .bubble-name { font-size: 15px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #8a7fc4; }
-    .side-left .bubble-name { color: #d99400; }
+    .side-left .bubble-name { color: #d4582f; }
     .side-right .bubble-name { padding-left: 34px; } /* clear of the ✕ button */
     .bubble-body { display: flex; align-items: center; gap: 12px; }
     .bubble-icon { flex: 0 0 auto; width: 76px; }
@@ -931,11 +931,12 @@
   <!-- Guides: one talks at a time. Stella docks bottom-left, Kai bottom-right. -->
   <div id="guide-dock" class="side-right" hidden>
     <div class="guide-figure" aria-hidden="true">
-      <!-- Stella the Star (original character) -->
+      <!-- Stella the Star (original character). She is Proxima Centauri, the closest star to the Sun:
+           a small red dwarf, so she glows orange-red. -->
       <svg class="fig fig-stella" viewBox="0 0 120 120">
         <g class="stella-body">
-          <path d="M60.0,14.0 L73.5,45.4 L107.6,48.5 L81.9,71.1 L89.4,104.5 L60.0,87.0 L30.6,104.5 L38.1,71.1 L12.4,48.5 L46.5,45.4 Z" fill="#ffd23f" stroke="#ffb703" stroke-width="9" stroke-linejoin="round" />
-          <path d="M60 24 L66 44 Q60 40 54 44 Z" fill="#fff3b0" opacity="0.7" />
+          <path d="M60.0,14.0 L73.5,45.4 L107.6,48.5 L81.9,71.1 L89.4,104.5 L60.0,87.0 L30.6,104.5 L38.1,71.1 L12.4,48.5 L46.5,45.4 Z" fill="#ff8a4c" stroke="#e8603c" stroke-width="9" stroke-linejoin="round" />
+          <path d="M60 24 L66 44 Q60 40 54 44 Z" fill="#ffd2b0" opacity="0.7" />
           <ellipse cx="48" cy="62" rx="5.5" ry="7.5" fill="#3b2a5c" />
           <ellipse cx="72" cy="62" rx="5.5" ry="7.5" fill="#3b2a5c" />
           <circle cx="50" cy="59" r="2.2" fill="#fff" />
@@ -2138,8 +2139,10 @@
         id: "family", icon: "☀️", title: "Meet the family",
         setup: ["hideShadowCones", "hideLightRays"],
         steps: [
-          { id: "hi-stella", guide: "stella", text: "Hi! I'm Stella. I'm a star, just like the Sun!",
-            more: "Of all the stars, the Sun is the closest one to Earth. That's why the Sun looks so big and bright." },
+          { id: "hi-stella", guide: "stella", text: "Hi! I'm Stella, the star closest to the Sun!",
+            more: "My real name is Proxima Centauri. Proxima means 'closest'. The Sun and I are neighbor stars!" },
+          { id: "stella-far", guide: "stella", text: "I'm so far away, my light takes over 4 years to reach Earth!",
+            more: "I'm a small red star, smaller and cooler than the Sun. You need a telescope to see me in the night sky." },
           { id: "sun-light", guide: "stella", text: "The Sun is a star too. The Sun makes its own light!",
             more: "The Sun is a giant ball of super-hot, glowing gas. About a million Earths could fit inside the Sun!" },
           { id: "hi-kai", guide: "kai", text: "And I'm Captain Kai! This blue and green ball is Earth, our home.",
