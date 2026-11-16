@@ -105,6 +105,72 @@
     }
     .btn[aria-pressed="true"].btn-toggle { background: var(--ui-accent); }
 
+    /* ---------- Settings: ⚙️ button + panel with big switches ---------- */
+    #btn-settings { font-size: 26px; }
+    #btn-settings[aria-expanded="true"] { background: #fff3c4; }
+    #settings-panel {
+      position: fixed;
+      z-index: 46;
+      top: calc(max(16px, env(safe-area-inset-top)) + 68px);
+      right: max(16px, env(safe-area-inset-right));
+      width: min(360px, calc(100vw - 32px));
+      padding: 12px;
+      border-radius: 24px;
+      background: #fff;
+      color: var(--ui-text);
+      box-shadow: 0 12px 34px rgba(0, 0, 0, 0.4);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      animation: bubble-in 0.2s ease-out;
+    }
+    #settings-panel[hidden] { display: none; }
+    .settings-head { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 0 8px; font-size: 20px; font-weight: 700; }
+    .settings-head .btn { box-shadow: none; border: 3px solid #e4defa; }
+    .setting-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      min-height: 68px;
+      padding: 8px 14px;
+      border: none;
+      border-radius: 18px;
+      background: #f6f3ff;
+      color: var(--ui-text);
+      font: 600 19px/1.15 "Fredoka", system-ui, sans-serif;
+      text-align: left;
+      cursor: pointer;
+    }
+    .setting-row:focus-visible { outline: 4px solid var(--ui-accent); outline-offset: 2px; }
+    .setting-row:disabled { opacity: 0.5; cursor: default; }
+    .setting-icon { font-size: 28px; width: 34px; text-align: center; flex: 0 0 auto; }
+    .setting-text { flex: 1 1 auto; display: flex; flex-direction: column; gap: 2px; }
+    .setting-text small { font-size: 14px; font-weight: 500; color: #6a5fa8; }
+    .switch {
+      position: relative;
+      flex: 0 0 auto;
+      width: 56px;
+      height: 32px;
+      border-radius: 999px;
+      background: #d6d0ee;
+      transition: background 0.2s ease;
+    }
+    .switch::after {
+      content: "";
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+      transition: transform 0.2s ease;
+    }
+    .setting-row[aria-pressed="true"] .switch { background: #3fb15a; }
+    .setting-row[aria-pressed="true"] .switch::after { transform: translateX(24px); }
+
     .btn-big {
       min-height: 68px;
       padding: 0 30px;
@@ -593,8 +659,6 @@
     #confetti { position: fixed; inset: 0; z-index: 45; width: 100%; height: 100%; pointer-events: none; }
 
     /* Free play button (shows once free play is unlocked) */
-    #btn-free-play { background: #fff3c4; border: 3px solid var(--ui-accent); }
-    #btn-free-play[hidden] { display: none; }
 
     @media (max-width: 1000px) {
       #quiz { top: calc(max(16px, env(safe-area-inset-top)) + 196px); }
@@ -604,8 +668,8 @@
       .quiz-answers { gap: 8px; }
       .quiz-answer { min-height: 104px; padding: 6px; font-size: 15px; border-width: 3px; }
       .quiz-answer .big-emoji { font-size: 42px; }
-      #btn-free-play .label, #btn-reset-view .label, #btn-cones .label { display: none; }
-      #btn-free-play, #btn-reset-view, #btn-cones { padding: 0; width: var(--tap); font-size: 24px; }
+      #btn-reset-view .label { display: none; }
+      #btn-reset-view { padding: 0; width: var(--tap); font-size: 24px; }
     }
     @media (prefers-reduced-motion: reduce) {
       .quiz-answer.wrong, .quiz-answer.right, #quiz { animation: none; }
@@ -728,9 +792,29 @@
   </nav>
 
   <div id="hud-top-right">
-    <button id="btn-free-play" class="btn" type="button" aria-label="Free play" hidden>🎉 <span class="label">Free play</span></button>
-    <button id="btn-cones" class="btn btn-toggle" type="button" aria-pressed="false" aria-label="Shadows">🔦 <span class="label">Shadows</span></button>
-    <button id="btn-sound" class="btn btn-round" type="button" aria-label="Sound effects on" aria-pressed="true">🔊</button>
+    <button id="btn-settings" class="btn btn-round" type="button" aria-label="Settings" aria-expanded="false" aria-controls="settings-panel">⚙️</button>
+  </div>
+
+  <div id="settings-panel" role="dialog" aria-label="Settings" hidden>
+    <div class="settings-head">
+      <span>Settings</span>
+      <button id="btn-settings-close" class="btn btn-round" type="button" aria-label="Close settings">✕</button>
+    </div>
+    <button id="btn-learning" class="setting-row" type="button" aria-pressed="true">
+      <span class="setting-icon" aria-hidden="true">🎓</span>
+      <span class="setting-text">Learning mode<small id="learning-sub">Lessons with Stella and Kai</small></span>
+      <span class="switch" aria-hidden="true"></span>
+    </button>
+    <button id="btn-cones" class="setting-row" type="button" aria-pressed="false">
+      <span class="setting-icon" aria-hidden="true">🔦</span>
+      <span class="setting-text">Shadows<small>Show the dark shadow cones</small></span>
+      <span class="switch" aria-hidden="true"></span>
+    </button>
+    <button id="btn-sound" class="setting-row" type="button" aria-pressed="true">
+      <span class="setting-icon" id="sound-icon" aria-hidden="true">🔊</span>
+      <span class="setting-text">Sound effects<small>Chimes and whooshes</small></span>
+      <span class="switch" aria-hidden="true"></span>
+    </button>
   </div>
 
   <div id="hud-bottom-center">
@@ -2282,7 +2366,7 @@
       ],
       freeStart: [
         { guide: "kai", text: "Free play! Move the Moon and make any eclipse you like.",
-          more: "Try the 🔦 Shadows button, and tap See it from Earth! when the Moon clicks into place." },
+          more: "Tap ⚙️ to turn on the shadow cones. When the Moon clicks into place, tap See it from Earth!" },
       ],
       freeSolar: [
         { guide: "kai", text: "Solar eclipse! The Moon is in the middle.",
@@ -2334,8 +2418,6 @@
     const quizEl = document.getElementById("quiz");
     const quizAnswersEl = document.getElementById("quiz-answers");
     const quizCountEl = document.getElementById("quiz-count");
-    const freePlayBtn = document.getElementById("btn-free-play");
-    freePlayBtn.addEventListener("click", () => startFreePlay());
 
     // --- Saved progress (works fine without storage, e.g. in a private window) ---
     const PROGRESS_KEY = "eclipse-explorer.progress";
@@ -2486,8 +2568,7 @@
       const c = LESSONS[lesson.chapter];
       titleEl.textContent = lesson.active ? `${lesson.chapter + 1} · ${c.title}`
         : freePlay.active ? "🎉 Free play" : "You finished the lessons! 🎉";
-      progressEl.hidden = false;
-      freePlayBtn.hidden = !(freePlay.unlocked && !freePlay.active);
+      progressEl.hidden = !learning.on; // no chapter bar while exploring freely
       startOverBtn.hidden = !(lesson.completed.size > 0 || freePlay.unlocked);
     }
 
@@ -2600,6 +2681,7 @@
     function startChapter(i) {
       const c = LESSONS[i];
       if (!c || ground.open) return;
+      if (!learning.on) { learning.on = true; saveLearning(); refreshLearningUI(); }
       if (realScale.on) setRealScale(false, { resume: false }); // lessons use the friendly view
       if (c.freePlay) { startFreePlay(); return; }
       freePlay.active = false;
@@ -2644,19 +2726,87 @@
       emit("lessonsdone");
     }
 
+    /* ---------- 🎓 Learning mode (in ⚙️ settings) ----------
+       On: the guided lessons. Off: explore freely, like free play, with no
+       lessons and no chapter bar; the guides only pop up briefly on an eclipse.
+       Turning it back on continues the lesson where the child left it. */
+    const LEARNING_KEY = "eclipse-explorer.learning";
+    const learning = { on: true, paused: false };
+    try { learning.on = localStorage.getItem(LEARNING_KEY) !== "0"; } catch { /* fine */ }
+    let savedResume = -1; // chapter to pick up when lessons start
+    const learningBtn = document.getElementById("btn-learning");
+
+    function saveLearning() {
+      try { localStorage.setItem(LEARNING_KEY, learning.on ? "1" : "0"); } catch { /* fine */ }
+    }
+    function refreshLearningUI() {
+      learningBtn.setAttribute("aria-pressed", String(learning.on));
+      document.getElementById("learning-sub").textContent = learning.on
+        ? "Lessons with Stella and Kai" : "Explore freely, no lessons";
+    }
+
+    function enterExplore({ greet = true } = {}) {
+      learning.paused = lesson.active; // remember the lesson to continue later
+      lesson.active = false;
+      lesson.token++;                  // ignore the lesson bubble still on screen
+      freePlay.active = true;          // reuse free play's brief guide pop-ups
+      reactions.enabled = true;
+      hideQuiz();
+      setChip("");
+      clearFacts();
+      applyEffects(["hideLightRays"]);
+      renderProgress();
+      if (greet) Guides.say(SCRIPTS.freeStart, { tag: "free", autoHideMs: 7000 });
+      else Guides.hide();
+    }
+
+    function resumeLearning() {
+      if (realScale.on) setRealScale(false, { resume: false });
+      freePlay.active = false;
+      if (learning.paused) {
+        learning.paused = false;
+        lesson.active = true;
+        reactions.enabled = false;
+        lesson.stepKey = null;           // show the step fresh (its scene effects come back)
+        applyEffects(LESSONS[lesson.chapter].setup);
+        renderProgress();
+        runStep();
+      } else {
+        resumeFromSaved();
+      }
+    }
+
+    function setLearningMode(on) {
+      if (learning.on === on || ground.open) return;
+      learning.on = on;
+      saveLearning();
+      refreshLearningUI();
+      if (on) resumeLearning(); else enterExplore();
+      emit("learningmode", { on });
+    }
+    learningBtn.addEventListener("click", () => setLearningMode(!learning.on));
+    refreshLearningUI(); // the switch shows the saved choice right away
+
+    function resumeFromSaved() {
+      if (savedResume >= 0) { const i = savedResume; savedResume = -1; startChapter(i); }
+      else if (freePlay.unlocked && lesson.completed.size) startFreePlay();
+      else startChapter(Math.max(0, LESSONS.findIndex((c, i) => !c.freePlay && !lesson.completed.has(i))));
+    }
+
     /** On load: pick up where the child left off (or start at chapter 1). */
     function startLessons() {
       const saved = loadProgress();
-      if (!saved) { startChapter(0); return; }
-      (saved.completed || []).forEach((id) => {
-        const i = LESSONS.findIndex((c) => c.id === id);
-        if (i >= 0) lesson.completed.add(i);
-      });
-      freePlay.unlocked = Boolean(saved.freePlay);
-      const resume = LESSONS.findIndex((c) => c.id === saved.current);
-      if (resume >= 0) startChapter(resume);
-      else if (freePlay.unlocked) startFreePlay();
-      else startChapter(Math.max(0, LESSONS.findIndex((c, i) => !c.freePlay && !lesson.completed.has(i))));
+      if (saved) {
+        (saved.completed || []).forEach((id) => {
+          const i = LESSONS.findIndex((c) => c.id === id);
+          if (i >= 0) lesson.completed.add(i);
+        });
+        freePlay.unlocked = Boolean(saved.freePlay);
+        savedResume = LESSONS.findIndex((c) => c.id === saved.current);
+      }
+      refreshLearningUI();
+      if (learning.on) resumeFromSaved();
+      else enterExplore();
     }
 
     // --- What the child does → lesson actions ---
@@ -2827,11 +2977,25 @@
     window.addEventListener("pointerdown", () => Sound.unlock(), { capture: true });
     window.addEventListener("keydown", () => Sound.unlock(), { capture: true });
 
+    // --- ⚙️ Settings panel ---
+    const settingsBtn = document.getElementById("btn-settings");
+    const settingsPanel = document.getElementById("settings-panel");
+    function openSettings(open) {
+      settingsPanel.hidden = !open;
+      settingsBtn.setAttribute("aria-expanded", String(open));
+    }
+    settingsBtn.addEventListener("click", () => openSettings(settingsPanel.hidden));
+    document.getElementById("btn-settings-close").addEventListener("click", () => openSettings(false));
+    // Tap anywhere else (or press Escape) to close it.
+    window.addEventListener("pointerdown", (e) => {
+      if (!settingsPanel.hidden && !settingsPanel.contains(e.target) && !settingsBtn.contains(e.target)) openSettings(false);
+    }, { capture: true });
+    window.addEventListener("keydown", (e) => { if (e.key === "Escape") openSettings(false); });
+
     const soundBtn = document.getElementById("btn-sound");
     const MUTE_KEY = "eclipse-explorer.muted";
     function showSoundState() {
-      soundBtn.textContent = Sound.muted ? "🔇" : "🔊";
-      soundBtn.setAttribute("aria-label", Sound.muted ? "Sound effects off" : "Sound effects on");
+      document.getElementById("sound-icon").textContent = Sound.muted ? "🔇" : "🔊";
       soundBtn.setAttribute("aria-pressed", String(!Sound.muted));
     }
     try { Sound.muted = localStorage.getItem(MUTE_KEY) === "1"; } catch { /* fine */ }
@@ -3261,7 +3425,8 @@
       Guides, SCRIPTS, reactions, LESSONS, startChapter,
       get lesson() { return { ...lesson, completed: [...lesson.completed] }; },
       get freePlay() { return { ...freePlay }; },
-      startFreePlay, resetProgress, saveProgress, setRealScale,
+      startFreePlay, resetProgress, saveProgress, setRealScale, setLearningMode,
+      get learning() { return { ...learning }; },
       /** Testing aid: finish the real-sizes animation right away. */
       skipScaleAnimation() { updateRealScale(1e3); },
       get quality() { return { ...quality, pixelRatio: renderer.getPixelRatio(), shadowMap: sunLight.shadow.mapSize.x }; },
