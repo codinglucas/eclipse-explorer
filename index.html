@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Eclipse Explorer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --space-deep: #120b2e;
+      --space-mid: #1e1650;
+      --ui-bg: rgba(255, 255, 255, 0.92);
+      --ui-text: #2a1f5c;
+      --ui-accent: #ffb703;
+      --ui-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+      --tap: 56px;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: var(--space-deep);
+      color: var(--ui-text);
+      font-family: "Fredoka", "Baloo 2", system-ui, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    #scene {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none; /* camera + (later) Moon dragging handle touch themselves */
+    }
+
+    /* ---------- UI: buttons ---------- */
+    .btn {
+      min-width: var(--tap);
+      min-height: var(--tap);
+      padding: 0 22px;
+      border: none;
+      border-radius: 999px;
+      background: var(--ui-bg);
+      color: var(--ui-text);
+      font: 600 20px/1 "Fredoka", system-ui, sans-serif;
+      box-shadow: var(--ui-shadow);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: transform 0.12s ease, background 0.2s ease;
+    }
+    .btn:hover { background: #fff; }
+    .btn:active { transform: scale(0.94); }
+    .btn:focus-visible { outline: 4px solid var(--ui-accent); outline-offset: 3px; }
+
+    #hud-bottom-right {
+      position: fixed;
+      right: max(16px, env(safe-area-inset-right));
+      bottom: max(16px, env(safe-area-inset-bottom));
+      display: flex;
+      gap: 12px;
+    }
+
+    /* ---------- UI: labels ---------- */
+    #scale-label {
+      position: fixed;
+      left: max(16px, env(safe-area-inset-left));
+      bottom: max(16px, env(safe-area-inset-bottom));
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.14);
+      color: #e8e2ff;
+      font-size: 15px;
+      font-weight: 500;
+      pointer-events: none;
+    }
+
+    /* ---------- Loading / error overlay ---------- */
+    #overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+      padding: 24px;
+      text-align: center;
+      background: radial-gradient(circle at 50% 40%, var(--space-mid), var(--space-deep));
+      color: #fff;
+      font-size: 26px;
+      font-weight: 600;
+      transition: opacity 0.6s ease;
+    }
+    #overlay small { font-size: 17px; font-weight: 500; opacity: 0.85; max-width: 420px; }
+    #overlay.hidden { opacity: 0; pointer-events: none; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .btn, #overlay { transition: none; }
+    }
+  </style>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas id="scene" aria-label="A 3D view of the Sun, the Earth and the Moon"></canvas>
+
+  <div id="scale-label">Not to scale</div>
+
+  <div id="hud-bottom-right">
+    <button id="btn-reset-view" class="btn" type="button" aria-label="Reset view">🎯 Reset view</button>
+  </div>
+
+  <div id="overlay" role="status">
+    <div>🌍 Getting space ready…</div>
+    <small id="overlay-detail"></small>
+  </div>
+
+  <!-- If the 3D module never starts (offline, very old browser, no WebGL), say so kindly. -->
+  <script>
+    setTimeout(function () {
+      if (!window.__eclipseReady) {
+        document.getElementById("overlay-detail").textContent =
+          "This is taking a while. Eclipse Explorer needs an internet connection the first time, and a browser that can show 3D.";
+      }
+    }, 8000);
+  </script>
+
+  <script type="module">
+    import * as THREE from "three";
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+    /* =====================================================================
+       CONFIG
+       All the numbers that shape the scene live here.
+       The friendly view is NOT to scale (see the "Real sizes" toggle later).
+       ===================================================================== */
+    const CONFIG = {
+      sun:   { position: new THREE.Vector3(-20, 0, 0), radius: 5, color: 0xffd23f, glowColor: 0xffb703, glowSize: 26 },
+      earth: { position: new THREE.Vector3(8, 0, 0),  radius: 2.6, spinSpeed: 0.12, tilt: 0.41 },
+      moon:  { radius: 0.95, orbitRadius: 7.5, startAngle: Math.PI * 0.62 },
+      orbitDots: { count: 80, size: 0.11, color: 0xb9b0ff },
+      stars: { count: 1800, radius: 220 },
+      shadows: { mapSize: 2048, halfSize: 10.5 },   // shadow camera box around the Earth–Moon system
+      light: { sunIntensity: 2.6, ambientIntensity: 0.32 },
+      camera: {
+        fov: 42,
+        target: new THREE.Vector3(-3.5, 0, 0),
+        direction: new THREE.Vector3(0.12, 0.42, 1).normalize(), // where the camera sits, seen from the target
+        fitWidth: 40,      // world units that must fit across the screen
+        fitHeight: 20,
+        minDistance: 18,
+        maxDistance: 90,
+      },
+      reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    };
+
+    // Moon angle convention (around Earth, in the flat orbit plane):
+    //   angle = PI  → Moon is between Sun and Earth  (solar eclipse line-up)
+    //   angle = 0   → Moon is behind Earth           (lunar eclipse line-up)
+    const state = {
+      moonAngle: CONFIG.moon.startAngle,
+    };
+
+    /* =====================================================================
+       SCENE
+       Renderer, camera, camera controls, background and starfield.
+       ===================================================================== */
+    const canvas = document.getElementById("scene");
+    let renderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    } catch (err) {
+      document.querySelector("#overlay div").textContent = "😢 This browser can't show 3D.";
+      document.getElementById("overlay-detail").textContent = "Try a newer browser like Chrome, Edge, Firefox or Safari.";
+      throw err;
+    }
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    const scene = new THREE.Scene();
+    scene.background = makeSpaceGradient();
+
+    const camera = new THREE.PerspectiveCamera(CONFIG.camera.fov, 1, 0.1, 1000);
+
+    const controls = new OrbitControls(camera, canvas);
+    controls.target.copy(CONFIG.camera.target);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.enablePan = false;
+    controls.rotateSpeed = 0.6;
+    controls.zoomSpeed = 0.7;
+    controls.minDistance = CONFIG.camera.minDistance;
+    controls.maxDistance = CONFIG.camera.maxDistance;
+    // Keep kids from getting lost: no flipping under the orbit plane, limited spin around.
+    controls.minPolarAngle = 0.25;
+    controls.maxPolarAngle = Math.PI / 2 - 0.02;
+    controls.minAzimuthAngle = -1.1;
+    controls.maxAzimuthAngle = 1.1;
+
+    /** Distance at which the whole Sun–Earth–Moon line fits the current screen. */
+    function fitDistance() {
+      const vFov = THREE.MathUtils.degToRad(CONFIG.camera.fov);
+      const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
+      const dW = CONFIG.camera.fitWidth / 2 / Math.tan(hFov / 2);
+      const dH = CONFIG.camera.fitHeight / 2 / Math.tan(vFov / 2);
+      return Math.max(dW, dH, CONFIG.camera.minDistance);
+    }
+
+    function homeCameraPosition() {
+      return CONFIG.camera.target.clone().addScaledVector(CONFIG.camera.direction, fitDistance());
+    }
+
+    function makeSpaceGradient() {
+      const c = document.createElement("canvas");
+      c.width = 4; c.height = 512;
+      const g = c.getContext("2d");
+      const grad = g.createLinearGradient(0, 0, 0, 512);
+      grad.addColorStop(0, "#0d0826");
+      grad.addColorStop(0.55, "#1e1650");
+      grad.addColorStop(1, "#2d1b5e");
+      g.fillStyle = grad;
+      g.fillRect(0, 0, 4, 512);
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    }
+
+    function makeStarfield() {
+      const { count, radius } = CONFIG.stars;
+      const positions = new Float32Array(count * 3);
+      const colors = new Float32Array(count * 3);
+      const palette = [new THREE.Color(0xffffff), new THREE.Color(0xfff3c4), new THREE.Color(0xcfd8ff), new THREE.Color(0xffd6f0)];
+      const v = new THREE.Vector3();
+      for (let i = 0; i < count; i++) {
+        v.randomDirection().multiplyScalar(radius * (0.8 + Math.random() * 0.2));
+        positions.set([v.x, v.y, v.z], i * 3);
+        const col = palette[i % palette.length].clone().multiplyScalar(0.55 + Math.random() * 0.45);
+        colors.set([col.r, col.g, col.b], i * 3);
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+      geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+      const mat = new THREE.PointsMaterial({
+        size: 2.2, sizeAttenuation: false, vertexColors: true,
+        map: makeRadialTexture(["rgba(255,255,255,1)", "rgba(255,255,255,0.6)", "rgba(255,255,255,0)"]),
+        transparent: true, depthWrite: false,
+      });
+      return new THREE.Points(geo, mat);
+    }
+    scene.add(makeStarfield());
+
+    /** Soft round gradient, used for star points and the Sun's glow. */
+    function makeRadialTexture(stops, size = 128) {
+      const c = document.createElement("canvas");
+      c.width = c.height = size;
+      const g = c.getContext("2d");
+      const grad = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+      stops.forEach((s, i) => grad.addColorStop(i / (stops.length - 1), s));
+      g.fillStyle = grad;
+      g.fillRect(0, 0, size, size);
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    }
+
+    /* =====================================================================
+       BODIES
+       Sun, Earth, Moon and the Moon's dotted orbit. Textures are drawn on
+       canvases, so there are no image files to download.
+       ===================================================================== */
+
+    // Small seeded random so the Earth and Moon look the same every time.
+    function seededRandom(seed) {
+      return () => {
+        seed = (seed * 16807) % 2147483647;
+        return (seed - 1) / 2147483646;
+      };
+    }
+
+    function makeEarthTexture() {
+      const W = 1024, H = 512;
+      const c = document.createElement("canvas");
+      c.width = W; c.height = H;
+      const g = c.getContext("2d");
+      const rand = seededRandom(7);
+
+      // Ocean with a gentle gradient
+      const ocean = g.createLinearGradient(0, 0, 0, H);
+      ocean.addColorStop(0, "#3a8dde");
+      ocean.addColorStop(0.5, "#2f7fd6");
+      ocean.addColorStop(1, "#3a8dde");
+      g.fillStyle = ocean;
+      g.fillRect(0, 0, W, H);
+
+      // Chunky cartoon continents: clusters of overlapping round blobs.
+      const continents = [
+        { x: 0.17, y: 0.33, w: 0.11, h: 0.13, n: 14 }, // north-west
+        { x: 0.25, y: 0.66, w: 0.05, h: 0.14, n: 9 },  // south-west
+        { x: 0.51, y: 0.30, w: 0.07, h: 0.07, n: 8 },  // north-middle
+        { x: 0.53, y: 0.56, w: 0.06, h: 0.14, n: 11 }, // middle
+        { x: 0.70, y: 0.31, w: 0.15, h: 0.11, n: 16 }, // north-east
+        { x: 0.83, y: 0.70, w: 0.05, h: 0.05, n: 6 },  // south-east island
+      ];
+      const drawLand = (color, grow) => {
+        g.fillStyle = color;
+        continents.forEach((ct) => {
+          const r = seededRandom(Math.floor(ct.x * 1000));
+          for (let i = 0; i < ct.n; i++) {
+            const x = (ct.x + (r() - 0.5) * 2 * ct.w) * W;
+            const y = (ct.y + (r() - 0.5) * 2 * ct.h) * H;
+            const rad = (0.035 + r() * 0.04) * H + grow;
+            g.beginPath();
+            g.arc(x, y, rad, 0, Math.PI * 2);
+            g.fill();
+          }
+        });
+      };
+      drawLand("#7bd389", 7); // light green shoreline
+      drawLand("#3fb15a", 0); // green land
+
+      // A few lighter patches for texture
+      g.fillStyle = "rgba(255, 240, 170, 0.35)";
+      for (let i = 0; i < 10; i++) {
+        const ct = continents[i % continents.length];
+        g.beginPath();
+        g.arc((ct.x + (rand() - 0.5) * ct.w) * W, (ct.y + (rand() - 0.5) * ct.h) * H, 8 + rand() * 12, 0, Math.PI * 2);
+        g.fill();
+      }
+
+      // Ice caps
+      g.fillStyle = "#f4f8ff";
+      g.fillRect(0, 0, W, H * 0.06);
+      g.fillRect(0, H * 0.94, W, H * 0.06);
+      for (let x = 0; x < W; x += 40) {
+        g.beginPath(); g.arc(x, H * 0.06, 14 + rand() * 10, 0, Math.PI * 2); g.fill();
+        g.beginPath(); g.arc(x + 20, H * 0.94, 14 + rand() * 10, 0, Math.PI * 2); g.fill();
+      }
+
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 4;
+      return tex;
+    }
+
+    function makeMoonTextures() {
+      const W = 512, H = 256;
+      const color = document.createElement("canvas");
+      const bump = document.createElement("canvas");
+      color.width = bump.width = W;
+      color.height = bump.height = H;
+      const gc = color.getContext("2d");
+      const gb = bump.getContext("2d");
+      const rand = seededRandom(42);
+
+      gc.fillStyle = "#b9b6c2";
+      gc.fillRect(0, 0, W, H);
+      gb.fillStyle = "#808080";
+      gb.fillRect(0, 0, W, H);
+
+      // A few big soft "seas"
+      for (let i = 0; i < 6; i++) {
+        gc.fillStyle = "rgba(120, 116, 135, 0.45)";
+        gc.beginPath();
+        gc.arc(rand() * W, H * (0.25 + rand() * 0.5), 20 + rand() * 30, 0, Math.PI * 2);
+        gc.fill();
+      }
+      // Chunky craters: dark floor + light rim (color), dip + ridge (bump)
+      for (let i = 0; i < 26; i++) {
+        const x = rand() * W, y = H * (0.12 + rand() * 0.76), r = 5 + rand() * 16;
+        gc.fillStyle = "#e3e1ea";
+        gc.beginPath(); gc.arc(x + 1.5, y + 1.5, r * 1.15, 0, Math.PI * 2); gc.fill();
+        gc.fillStyle = "#94909f";
+        gc.beginPath(); gc.arc(x, y, r, 0, Math.PI * 2); gc.fill();
+
+        gb.fillStyle = "#c8c8c8";
+        gb.beginPath(); gb.arc(x, y, r * 1.2, 0, Math.PI * 2); gb.fill();
+        gb.fillStyle = "#3c3c3c";
+        gb.beginPath(); gb.arc(x, y, r, 0, Math.PI * 2); gb.fill();
+      }
+
+      const map = new THREE.CanvasTexture(color);
+      map.colorSpace = THREE.SRGBColorSpace;
+      const bumpMap = new THREE.CanvasTexture(bump);
+      return { map, bumpMap };
+    }
+
+    // --- Sun: unlit glowing ball + additive halo sprite ---
+    const sun = new THREE.Group();
+    sun.position.copy(CONFIG.sun.position);
+    const sunBall = new THREE.Mesh(
+      new THREE.SphereGeometry(CONFIG.sun.radius, 48, 32),
+      new THREE.MeshBasicMaterial({ color: CONFIG.sun.color })
+    );
+    const sunGlow = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: makeRadialTexture([
+        "rgba(255, 236, 140, 0.95)",
+        "rgba(255, 196, 60, 0.55)",
+        "rgba(255, 150, 40, 0.18)",
+        "rgba(255, 120, 40, 0)",
+      ]),
+      color: CONFIG.sun.glowColor,
+      blending: THREE.AdditiveBlending,
+      transparent: true,
+      depthWrite: false,
+    }));
+    sunGlow.scale.setScalar(CONFIG.sun.glowSize);
+    sun.add(sunGlow, sunBall);
+    scene.add(sun);
+
+    // --- Earth: tilted group so the spin looks natural ---
+    const earthSystem = new THREE.Group();      // sits at Earth's position; the Moon orbits this
+    earthSystem.position.copy(CONFIG.earth.position);
+    scene.add(earthSystem);
+
+    const earthTilt = new THREE.Group();
+    earthTilt.rotation.z = CONFIG.earth.tilt;
+    earthSystem.add(earthTilt);
+
+    const earth = new THREE.Mesh(
+      new THREE.SphereGeometry(CONFIG.earth.radius, 64, 48),
+      new THREE.MeshStandardMaterial({ map: makeEarthTexture(), roughness: 0.75, metalness: 0 })
+    );
+    earth.castShadow = true;
+    earth.receiveShadow = true;
+    earthTilt.add(earth);
+
+    // --- Moon ---
+    const moonTex = makeMoonTextures();
+    const moon = new THREE.Mesh(
+      new THREE.SphereGeometry(CONFIG.moon.radius, 48, 32),
+      new THREE.MeshStandardMaterial({ map: moonTex.map, bumpMap: moonTex.bumpMap, bumpScale: 3, roughness: 1, metalness: 0 })
+    );
+    moon.castShadow = true;
+    moon.receiveShadow = true;
+    earthSystem.add(moon);
+
+    function placeMoon(angle) {
+      moon.position.set(
+        Math.cos(angle) * CONFIG.moon.orbitRadius,
+        0,
+        -Math.sin(angle) * CONFIG.moon.orbitRadius
+      );
+      moon.rotation.y = angle; // same face toward Earth, like the real Moon
+    }
+    placeMoon(state.moonAngle);
+
+    // --- Dotted orbit: chunky dots read better than a 1-pixel line ---
+    const orbitDots = new THREE.InstancedMesh(
+      new THREE.SphereGeometry(CONFIG.orbitDots.size, 10, 8),
+      new THREE.MeshBasicMaterial({ color: CONFIG.orbitDots.color, transparent: true, opacity: 0.7 }),
+      CONFIG.orbitDots.count
+    );
+    {
+      const m = new THREE.Matrix4();
+      for (let i = 0; i < CONFIG.orbitDots.count; i++) {
+        const a = (i / CONFIG.orbitDots.count) * Math.PI * 2;
+        m.makeTranslation(Math.cos(a) * CONFIG.moon.orbitRadius, 0, Math.sin(a) * CONFIG.moon.orbitRadius);
+        orbitDots.setMatrixAt(i, m);
+      }
+    }
+    earthSystem.add(orbitDots);
+
+    /* =====================================================================
+       LIGHT & SHADOWS
+       One directional light shining from the Sun toward Earth. Its shadow
+       camera is a tight box around the Earth–Moon system, so the shadows
+       stay crisp. Eclipses come from these real shadows.
+       ===================================================================== */
+    const sunLight = new THREE.DirectionalLight(0xfff4e0, CONFIG.light.sunIntensity);
+    sunLight.position.copy(CONFIG.sun.position);
+    sunLight.target = earthSystem;
+    sunLight.castShadow = true;
+    {
+      const s = CONFIG.shadows.halfSize;
+      const cam = sunLight.shadow.camera;
+      cam.left = -s; cam.right = s; cam.top = s; cam.bottom = -s;
+      const d = CONFIG.sun.position.distanceTo(CONFIG.earth.position);
+      cam.near = d - CONFIG.moon.orbitRadius - 2;
+      cam.far = d + CONFIG.moon.orbitRadius + 2;
+      sunLight.shadow.mapSize.set(CONFIG.shadows.mapSize, CONFIG.shadows.mapSize);
+      sunLight.shadow.bias = -0.0004;
+      sunLight.shadow.normalBias = 0.02;
+      sunLight.shadow.radius = 3;
+    }
+    scene.add(sunLight);
+
+    // Soft fill so the night sides are dim, not pitch black.
+    scene.add(new THREE.HemisphereLight(0xb8c4ff, 0x2a1f5c, CONFIG.light.ambientIntensity));
+
+    /* =====================================================================
+       INTERACTION
+       (Step 2: dragging the Moon along its orbit, ◀ ▶ buttons, snap assist.)
+       ===================================================================== */
+
+    /* =====================================================================
+       GUIDES
+       (Step 4: Stella the Star and Captain Kai the Astronaut.)
+       ===================================================================== */
+
+    /* =====================================================================
+       LESSONS
+       (Step 5: all lesson text lives in one LESSONS array here.)
+       ===================================================================== */
+
+    /* =====================================================================
+       UI
+       Reset view, window resizing, loading overlay.
+       ===================================================================== */
+    let cameraTween = null; // { from, to, fromTarget, t }
+    let cameraIsHome = true; // false once the child moves the camera themselves
+
+    function resetView() {
+      cameraIsHome = true;
+      cameraTween = {
+        from: camera.position.clone(),
+        to: homeCameraPosition(),
+        fromTarget: controls.target.clone(),
+        t: CONFIG.reducedMotion ? 1 : 0,
+      };
+    }
+    document.getElementById("btn-reset-view").addEventListener("click", resetView);
+    // Any manual camera move cancels a reset animation in progress.
+    controls.addEventListener("start", () => { cameraTween = null; cameraIsHome = false; });
+
+    function onResize() {
+      const w = window.innerWidth, h = window.innerHeight;
+      if (!w || !h) return; // hidden tab / zero-size frame: keep the last good size
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      // Tall, narrow screens need to back further away to fit Sun, Earth and Moon.
+      controls.maxDistance = Math.max(CONFIG.camera.maxDistance, fitDistance() * 1.25);
+      // If the page started while hidden, the camera may never have been placed properly.
+      // Rotating a tablet or resizing the window re-fits the view, unless the child moved it.
+      const p = camera.position;
+      if (cameraIsHome || !Number.isFinite(p.x + p.y + p.z) || p.lengthSq() === 0) {
+        cameraTween = null;
+        camera.position.copy(homeCameraPosition());
+        controls.target.copy(CONFIG.camera.target);
+      }
+    }
+    window.addEventListener("resize", onResize);
+    onResize();
+    camera.position.copy(homeCameraPosition());
+    controls.update();
+
+    // Tiny hook for testing from the browser console during development.
+    window.__eclipse = {
+      setMoonAngle(a) { state.moonAngle = a; placeMoon(a); },
+      THREE, scene, camera, renderer, controls, homeCameraPosition,
+    };
+
+    /* =====================================================================
+       MAIN LOOP
+       ===================================================================== */
+    const clock = new THREE.Clock();
+    const easeInOut = (t) => t * t * (3 - 2 * t);
+
+    function tick() {
+      const dt = Math.min(clock.getDelta(), 0.1);
+      const t = clock.elapsedTime;
+
+      earth.rotation.y += dt * CONFIG.earth.spinSpeed;
+
+      if (!CONFIG.reducedMotion) {
+        sunGlow.scale.setScalar(CONFIG.sun.glowSize * (1 + Math.sin(t * 1.6) * 0.025));
+      }
+
+      if (cameraTween) {
+        cameraTween.t = Math.min(1, cameraTween.t + dt / 0.9);
+        const k = easeInOut(cameraTween.t);
+        camera.position.lerpVectors(cameraTween.from, cameraTween.to, k);
+        controls.target.lerpVectors(cameraTween.fromTarget, CONFIG.camera.target, k);
+        if (cameraTween.t >= 1) cameraTween = null;
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+      requestAnimationFrame(tick);
+    }
+
+    requestAnimationFrame(() => {
+      tick();
+      window.__eclipseReady = true;
+      document.getElementById("overlay").classList.add("hidden");
+    });
+  </script>
+</body>
+</html>
