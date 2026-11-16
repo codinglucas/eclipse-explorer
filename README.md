@@ -39,8 +39,14 @@ Both eclipses need the Sun, Earth and Moon in a straight line. The only differen
   6. ❓ Who's in the middle? A picture quiz with no fail state: wrong answers get a gentle hint, right answers get confetti.
   7. 🎉 Free play
 - **🔭 See the real sizes!** Animates to true relative sizes and distances: a tiny Earth, a tiny far-away Moon, and a giant Sun. "Space is really, really big!"
+- **⚙️ Settings** (top right), with three big switches:
+  - **🎓 Learning mode:** turn it off to explore freely, with no lessons and no chapter bar; the guides only pop up briefly when an eclipse happens. Turn it back on to continue the lesson where you left it.
+  - **🔦 Shadows:** show or hide the shadow cones.
+  - **🔊 Sound effects:** on or off.
+
+  All three choices are remembered.
 - **Progress is saved** in the browser, and ↺ starts over (with a grown-up check).
-- **Kid-friendly UI.** Big tap targets, the rounded Fredoka font, works on tablets (landscape and portrait) and phones, respects **reduced motion**, and has a 🔇 sound toggle.
+- **Kid-friendly UI.** Big tap targets, the rounded Fredoka font, works on tablets (landscape and portrait) and phones, and respects **reduced motion**.
 
 ## Open it locally
 
