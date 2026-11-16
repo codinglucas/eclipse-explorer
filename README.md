@@ -3,7 +3,7 @@
 **▶ Play it now: https://codinglucas.github.io/eclipse-explorer/**
 
 A 3D learning simulator that teaches kids aged **6–8** how **solar** and **lunar eclipses** work.
-Two friendly guides, **Stella the Star** and **Captain Kai the astronaut**, walk the child through hands-on experiments. Stella is **Proxima Centauri**, the closest star to the Sun: a small red star. The child *makes* each eclipse by moving the Moon.
+Two friendly guides, **Proxima the Star** and **Captain Kai the astronaut**, walk the child through hands-on experiments. Proxima is named after **Proxima Centauri**, the closest star to the Sun: a small red star. The child *makes* each eclipse by moving the Moon.
 
 > Screenshot coming soon. Add one as `docs/screenshot.png` and show it here with `![Eclipse Explorer](docs/screenshot.png)`.
 
@@ -76,7 +76,7 @@ All the words the guides say live in **one place**: the `LESSONS` section near t
 ```js
 {
   id: "solar-task",            // unique name for the step
-  guide: "kai",                // "stella" (light things) or "kai" (being-there things)
+  guide: "kai",                // "proxima" (light things) or "kai" (being-there things)
   text: "Who's in the middle? Put the Moon between the Sun and Earth!",  // one short sentence, max ~15 words
   more: "Drag the Moon toward the Sun, or use the arrow buttons.",       // the "Explore more! 🔭" text
   action: "alignSolar",        // optional: what the child must do before Next appears
