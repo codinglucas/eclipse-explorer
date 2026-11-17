@@ -709,6 +709,64 @@
       .ef-caption span { font-size: 11px; }
     }
 
+    /* ---------- Real-sizes toggle (bottom-left); its small top line is the "Not to scale" label ---------- */
+    #btn-scale {
+      position: fixed;
+      left: max(16px, env(safe-area-inset-left));
+      bottom: max(16px, env(safe-area-inset-bottom));
+      flex-direction: column;
+      gap: 2px;
+      min-height: 64px;
+      padding: 6px 18px;
+      line-height: 1.1;
+    }
+    #btn-scale .scale-note { font-size: 13px; font-weight: 600; color: #7a6fb5; }
+    #btn-scale .scale-main { font-size: 19px; }
+    #btn-scale[aria-pressed="true"] { background: #fff3c4; border: 3px solid var(--ui-accent); }
+    #btn-scale:disabled { opacity: 0.5; cursor: default; }
+    /* Narrower screens: just the 🔭 icon under the small note, so the Moon arrows have room */
+    @media (max-width: 860px) {
+      #btn-scale { padding: 6px 12px; min-width: 64px; }
+      #btn-scale .scale-main .label { display: none; }
+      #btn-scale .scale-main { font-size: 24px; }
+      #btn-scale .scale-note { font-size: 11px; }
+    }
+
+    /* Labels in real-sizes mode: tiny Earth and Moon dots, and the giant Sun off to the side */
+    .real-label { font-size: 16px; padding: 6px 12px; }
+    #sun-far-label {
+      position: fixed;
+      z-index: 4;
+      left: max(16px, env(safe-area-inset-left));
+      top: 50%;
+      transform: translateY(-50%);
+      max-width: 220px;
+      padding: 10px 16px;
+      border-radius: 18px;
+      background: #fff;
+      color: var(--ui-text);
+      font-size: 19px;
+      font-weight: 700;
+      line-height: 1.2;
+      box-shadow: var(--ui-shadow);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.6s ease;
+    }
+    #sun-far-label small { display: block; margin-top: 4px; font-size: 14px; font-weight: 500; color: #5a4f99; }
+    #sun-far-label.show { opacity: 1; }
+    @media (prefers-reduced-motion: reduce) { #sun-far-label { transition: none; } }
+
+    /* Medium widths (861–1060 px): icons only on the bottom row, so ◀ ▶, Play, zoom and Reset never overlap */
+    @media (min-width: 861px) and (max-width: 1060px) {
+      #btn-play .label, #btn-reset-view .label, #btn-scale .scale-main .label { display: none; }
+      #btn-play { min-width: 72px; width: 72px; padding: 0; }
+      #btn-reset-view { width: var(--tap); padding: 0; font-size: 24px; }
+      #btn-scale { padding: 6px 12px; min-width: 64px; }
+      #btn-scale .scale-main { font-size: 24px; }
+      #btn-scale .scale-note { font-size: 11px; }
+    }
+
     /* ---------- Loading / error overlay ---------- */
     #overlay {
       position: fixed;
@@ -817,6 +875,12 @@
     </svg>
     <span class="ef-caption"><b>🌍 View from Earth</b><span id="ef-status">Daytime ☀️</span></span>
   </button>
+
+  <button id="btn-scale" class="btn" type="button" aria-pressed="false">
+    <span class="scale-note" id="scale-note">Not to scale</span>
+    <span class="scale-main">🔭 <span class="label" id="scale-label">See the real sizes!</span></span>
+  </button>
+  <div id="sun-far-label" aria-hidden="true">← The Sun is WAY over here!<small>Really, the Sun is about 400 times farther away than the Moon.</small></div>
 
   <div id="fact-labels" aria-live="polite"></div>
 
@@ -1223,6 +1287,15 @@
       // shadow (penumbra: partial eclipse there). The real spot is even smaller; this one stays visible.
       moonShadow: { umbraRadius: 0.16, penumbraRadius: 1.45 },
       redMoon: { tint: 0xe0a080, emissive: 0xb0401c, emissiveIntensity: 0.75, riseSeconds: 3 },
+      // True relative sizes (Earth radius = 0.2 units). The Sun's distance is squeezed so it fits.
+      realScale: {
+        earthRadius: 0.2,              // Earth
+        moonRadius: 0.2 * 0.273,       // the Moon is about 27% as wide as Earth
+        orbitRadius: 0.2 * 60.3,       // the Moon is about 60 Earth-radii away (384,000 km)
+        sunRadius: 0.2 * 109,          // the Sun is 109 times wider than Earth
+        seconds: 2.2,
+        cameraTargetX: 0,
+      },
       reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     };
 
@@ -2741,6 +2814,7 @@
         { guide: "proxima", text: "Earth's air bends some sunlight onto the Moon, like a sunset!",
           more: "Air bounces blue light away and lets red light through. That's why sunsets look red. During a lunar eclipse, light from all the sunsets around Earth shines on the Moon!" },
       ],
+      liveSafety: [], // filled in below: the solar safety talk with a live-view ending
       solarSafety: [
         { guide: "kai", icon: "glasses", lockSeconds: 2,
           text: "Never look at the Sun without special eclipse glasses!",
@@ -2786,6 +2860,12 @@
       ],
     };
 
+
+    SCRIPTS.liveSafety = [
+      ...SCRIPTS.solarSafety.slice(0, 3),
+      { guide: "kai", text: "Okay! Now let's watch the sky.",
+        more: "In real life, keep your eclipse glasses on the whole time you look up at the Sun." },
+    ];
 
     /* ---------- Lesson engine ---------- */
     const lesson = {
@@ -2966,7 +3046,7 @@
       factLabels.set(body, el);
     }
     function clearFacts() {
-      factLabels.forEach((el, key) => { el.remove(); factLabels.delete(key); });
+      factLabels.forEach((el, key) => { if (!key.endsWith("-real")) { el.remove(); factLabels.delete(key); } });
     }
     function updateFactLabels() {
       if (!factLabels.size) return;
@@ -2975,6 +3055,8 @@
         const below = el.classList.contains("below");
         if (body === "sun") labelAnchor.copy(sun.position).y += CONFIG.sun.radius + 1;
         else if (body === "earth") labelAnchor.copy(earthSystem.position).y += CONFIG.earth.radius + 0.8;
+        else if (body === "earth-real") labelAnchor.copy(earthSystem.position).y -= sizes.earthRadius + 0.6;
+        else if (body === "moon-real") { moon.getWorldPosition(labelAnchor); labelAnchor.y += sizes.moonRadius + 0.6; }
         else { moon.getWorldPosition(labelAnchor); labelAnchor.y -= CONFIG.moon.radius + 0.5; }
         labelAnchor.project(camera);
         const x = (labelAnchor.x * 0.5 + 0.5) * w, y = (-labelAnchor.y * 0.5 + 0.5) * h;
@@ -3059,6 +3141,7 @@
     function startChapter(i) {
       const c = LESSONS[i];
       if (!c || ground.open) return;
+      if (realScale.on) setRealScale(false, { resume: false }); // lessons use the friendly view
       Guides.setQuiet(false); // starting a chapter brings the guides back
       if (!learning.on) { learning.on = true; saveLearning(); refreshLearningUI(); }
       if (c.freePlay) { startFreePlay(); return; }
@@ -3140,6 +3223,7 @@
     }
 
     function resumeLearning() {
+      if (realScale.on) setRealScale(false, { resume: false });
       freePlay.active = false;
       if (learning.paused) {
         learning.paused = false;
@@ -3200,7 +3284,7 @@
 
     // --- What the child does → lesson actions ---
     const onAction = (fn) => (e) => {
-      if (!lesson.active) return;
+      if (!lesson.active || realScale.on) return; // lessons pause while real sizes are on
       const step = currentStep();
       if (step && step.action) fn(step, e.detail || {});
     };
@@ -3415,6 +3499,108 @@
 
     const lerp = THREE.MathUtils.lerp;
 
+    /* ---------- "See the real sizes!" ----------
+       Smoothly switches to true relative sizes and distances: Earth shrinks to a
+       small ball, the Moon to a tiny dot 60 Earth-radii away, and the Sun grows
+       into a giant glowing edge at the side (its distance is squeezed to fit).
+       Snapping and lessons pause until the friendly view comes back. */
+    const realScale = { on: false, mix: 0, conesBefore: false, raysBefore: false, sunsetBefore: false };
+    const scaleBtn = document.getElementById("btn-scale");
+    const sunFarLabel = document.getElementById("sun-far-label");
+    const smoothMix = (t) => t * t * (3 - 2 * t);
+    const NORMAL_TARGET_X = CONFIG.camera.target.x;
+
+    /** Apply a blend between the friendly view (0) and real sizes (1). */
+    function applyScaleMix(m) {
+      const R = CONFIG.realScale;
+      sizes.earthRadius = lerp(CONFIG.earth.radius, R.earthRadius, m);
+      sizes.moonRadius = lerp(CONFIG.moon.radius, R.moonRadius, m);
+      sizes.orbitRadius = lerp(CONFIG.moon.orbitRadius, R.orbitRadius, m);
+      earth.scale.setScalar(sizes.earthRadius / CONFIG.earth.radius);
+      const moonScale = sizes.moonRadius / CONFIG.moon.radius;
+      moon.scale.setScalar(moonScale);
+      moonHit.scale.setScalar(lerp(1, 0.6, m) / moonScale); // the tiny Moon stays easy to grab
+      orbitDots.scale.setScalar(sizes.orbitRadius / CONFIG.moon.orbitRadius);
+      placeMoon(state.moonAngle);
+      // Sun: keep its right edge where it was and let it grow huge to the left.
+      const sunR = lerp(CONFIG.sun.radius, R.sunRadius, m);
+      sun.scale.setScalar(sunR / CONFIG.sun.radius);
+      sun.position.x = CONFIG.sun.position.x + CONFIG.sun.radius - sunR;
+      // Shadow box must still cover the (wider) Moon orbit.
+      const cam = sunLight.shadow.camera;
+      const half = Math.max(CONFIG.shadows.halfSize, sizes.orbitRadius + 1.5);
+      cam.left = -half; cam.right = half; cam.top = half; cam.bottom = -half;
+      const d = CONFIG.sun.position.distanceTo(CONFIG.earth.position);
+      cam.near = Math.max(0.5, d - sizes.orbitRadius - 2);
+      cam.far = d + sizes.orbitRadius + 2;
+      cam.updateProjectionMatrix();
+      // The Moon's shadow painted on Earth shrinks with the Moon (real umbra ≈ a dot, penumbra ≈ 2 Moon-widths).
+      moonShadowUniforms.uMoonShadow.value.set(
+        lerp(CONFIG.moonShadow.umbraRadius, R.moonRadius * 0.15, m),
+        lerp(CONFIG.moonShadow.penumbraRadius, R.moonRadius * 2.2, m));
+    }
+
+    function updateRealScale(dt) {
+      const want = realScale.on ? 1 : 0;
+      if (realScale.mix === want) return;
+      const step = CONFIG.reducedMotion ? 1 : dt / CONFIG.realScale.seconds;
+      realScale.mix = want > realScale.mix ? Math.min(1, realScale.mix + step) : Math.max(0, realScale.mix - step);
+      applyScaleMix(smoothMix(realScale.mix));
+      sunFarLabel.classList.toggle("show", realScale.mix > 0.85);
+      if (realScale.mix > 0.85) showRealLabels(); else clearRealLabels();
+    }
+    const sunGlowFactor = () => lerp(1, 0.45, smoothMix(realScale.mix)); // a huge glow would hide everything
+
+    function setRealScale(on, { resume = true } = {}) {
+      if (realScale.on === on || ground.open) return;
+      realScale.on = on;
+      interactionRules.snapEnabled = !on;
+      if (on) {
+        realScale.conesBefore = state.conesOn;
+        realScale.raysBefore = raysOn;
+        realScale.sunsetBefore = sunsetOn;
+        setShadowCones(false);
+        setLightRays(false);
+        setSunsetLight(false);       // the sunset-light drawing is made for the friendly sizes
+      } else {
+        if (realScale.conesBefore) setShadowCones(true);
+        if (realScale.raysBefore) setLightRays(true);
+        if (realScale.sunsetBefore) setSunsetLight(true);
+      }
+      sunsetBtn.disabled = on;
+      updateAlignment(); // let go of any snapped line-up
+      conesBtn.disabled = on;
+      scaleBtn.setAttribute("aria-pressed", String(on));
+      document.getElementById("scale-label").textContent = on ? "Back to the friendly view" : "See the real sizes!";
+      document.getElementById("scale-note").textContent = on ? "Real sizes!" : "Not to scale";
+      scaleBtn.setAttribute("aria-label", on ? "Back to the friendly view" : "See the real sizes");
+      CONFIG.camera.target.x = on ? CONFIG.realScale.cameraTargetX : NORMAL_TARGET_X;
+      resetView();
+      emit("realscale", { on });
+      if (on) {
+        Guides.say(SCRIPTS.realSizes, { tag: "scale" });
+      } else {
+        if (Guides.tag === "scale") Guides.hide();
+        if (resume && lesson.active) runStep(); // pick the lesson up again
+      }
+    }
+    scaleBtn.addEventListener("click", () => setRealScale(!realScale.on));
+
+    // Small labels pointing at the tiny Earth and Moon (same style as the chapter-1 facts).
+    function showRealLabels() {
+      if (factLabels.has("earth-real")) return;
+      [["earth-real", "🌍 Earth"], ["moon-real", "🌙 Moon"]].forEach(([key, text]) => {
+        const el = document.createElement("div");
+        el.className = "fact-label real-label" + (key === "earth-real" ? " below" : "");
+        el.textContent = text;
+        labelsEl.appendChild(el);
+        factLabels.set(key, el);
+      });
+    }
+    function clearRealLabels() {
+      ["earth-real", "moon-real"].forEach((k) => { const el = factLabels.get(k); if (el) { el.remove(); factLabels.delete(k); } });
+    }
+
     // --- Shadow cones toggle ---
     const conesBtn = document.getElementById("btn-cones");
     conesBtn.addEventListener("click", () => setShadowCones(!state.conesOn));
@@ -3468,7 +3654,8 @@
     };
     const groundEl = document.getElementById("ground");
     const $g = (id) => document.getElementById(id);
-    const ground = { open: false, type: null, phase: "idle", t: 0, totalAnnounced: false };
+    const ground = { open: false, type: null, phase: "idle", t: 0, totalAnnounced: false,
+                     liveNight: 1, liveSafetyDone: false, resumePlay: false };
     let groundCoveredAt = Infinity; // when the ground view fully covers the 3D scene
 
     // Stars for the ground sky (fixed pattern)
@@ -3672,6 +3859,7 @@
       const S = GROUND.sun, M = GROUND.moon, sky = moonInSky();
       const farSide = sky.toward > 0;
       const night = smooth(-0.17, 0.17, sky.toward);
+      ground.liveNight = night; // the safety talk starts as soon as the Sun is up (see liveSafetyCheck)
 
       // Day: the Sun, and the Moon only where it covers the Sun. (Up in space is up in the sky.)
       const gap = farSide ? 6 : Math.min(6, sunMoonGap(sky.off));
@@ -3749,6 +3937,8 @@
       ground.open = true;
       ground.type = type;
       ground.t = 0;
+      ground.liveSafetyDone = false;
+      ground.liveNight = 1;
       const live = type === "live";
       $g("solar-sky").style.display = type === "lunar" ? "none" : "";
       $g("lunar-sky").style.display = type === "solar" ? "none" : "";
@@ -3770,6 +3960,7 @@
         $g("ground-top").hidden = false;
         Guides.hide();
         setGroundPhase("live");
+        liveSafetyCheck(); // daytime right away? then the safety talk comes first
       } else if (type === "solar") {
         // Safety first: Kai's warning (its Next is locked for 2 seconds), and the
         // eclipse only plays once the child has gone through the whole safety talk.
@@ -3798,8 +3989,26 @@
     }
 
     /** Called every frame while the ground view is open. */
+    /* Safety first in the live view too: the moment the Sun is in the sky, the Moon pauses and
+       Kai gives the same locked safety talk as the eclipse show (Next locked for 2 s, Back to space
+       hidden, can't be closed with ✕). It runs once each time the live view opens. */
+    function liveSafetyCheck() {
+      if (ground.phase !== "live" || ground.liveSafetyDone || ground.liveNight > 0.5) return;
+      ground.liveSafetyDone = true;
+      ground.resumePlay = autoplay.on;
+      setAutoplay(false);                 // no eclipse can sneak past while Kai is talking
+      $g("ground-top").hidden = true;
+      setGroundPhase("safety");
+      Guides.say(SCRIPTS.liveSafety, { tag: "safety" }).then(() => {
+        if (!ground.open || ground.type !== "live") return;
+        $g("ground-top").hidden = false;
+        setGroundPhase("live");
+        if (ground.resumePlay) setAutoplay(true);
+      });
+    }
+
     function updateGround(dt) {
-      if (ground.type === "live") { renderGround(); return; }
+      if (ground.type === "live") { renderGround(); liveSafetyCheck(); return; }
       if (ground.phase !== "playing" && ground.phase !== "total") return;
       ground.t = Math.min(groundDuration(), ground.t + dt);
       const total = renderGround();
@@ -4000,7 +4209,10 @@
       Guides, SCRIPTS, reactions, LESSONS, startChapter,
       get lesson() { return { ...lesson, completed: [...lesson.completed] }; },
       get freePlay() { return { ...freePlay }; },
-      startFreePlay, resetProgress, saveProgress, setLearningMode,
+      startFreePlay, resetProgress, saveProgress, setLearningMode, setRealScale,
+      get realScale() { return { ...realScale }; },
+      /** Testing aid: finish the real-sizes animation right away. */
+      skipScaleAnimation() { updateRealScale(1e3); },
       get autoplay() { return { ...autoplay }; },
       get orbitTilt() { return { node: orbitTilt.node, settled: orbitTilt.settled, on: orbitTilt.on, amount: orbitTilt.amount }; },
       setOrbitTilt,
@@ -4076,13 +4288,14 @@
       updateMoon(dt);
       updateEclipseEffects(dt);
       updateLightRays(dt);
+      updateRealScale(dt);
       updateSunsetLight(dt);
       updateFactLabels();
 
       if (!CONFIG.reducedMotion) {
-        sunGlow.scale.setScalar(CONFIG.sun.glowSize * (1 + Math.sin(t * 1.6) * 0.025));
+        sunGlow.scale.setScalar(CONFIG.sun.glowSize * sunGlowFactor() * (1 + Math.sin(t * 1.6) * 0.025));
       } else {
-        sunGlow.scale.setScalar(CONFIG.sun.glowSize);
+        sunGlow.scale.setScalar(CONFIG.sun.glowSize * sunGlowFactor());
       }
 
       if (cameraTween) {

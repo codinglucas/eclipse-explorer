@@ -32,7 +32,7 @@ Both eclipses need the Sun, Earth and Moon in a straight line. The only differen
 - **View from Earth, full screen.** Tap the small 🌍 frame to open it big, in the **countryside** or the **city**. With no eclipse lined up it shows the same live sky as the frame. With the Moon snapped into a line-up it plays that eclipse:
   - **Solar:** the Moon slides over the Sun, the sky turns to dusk, and stars and the corona appear.
   - **Lunar:** a night sky where Earth's shadow turns the Moon red.
-- **Safety first.** Before every solar eclipse view, Captain Kai explains why you must **never look at the Sun without eclipse glasses**. The message can't be skipped for 2 seconds.
+- **Safety first.** Before every solar eclipse view, and as soon as the Sun shows in the live View from Earth, Captain Kai explains why you must **never look at the Sun without eclipse glasses**. The Moon pauses meanwhile, and the message can't be skipped for 2 seconds.
 - **Guides with speech bubbles.** One short sentence at a time, **Next ➜**, **Explore more! 🔭** for curious kids, **🔊 read-aloud** (a different voice for each guide), and a ✕ that closes the tutorial for good: no bubble comes back, also after a reload, until **Learning mode** is switched on again in ⚙️ (only the Sun safety talk still shows).
 - **7 chapters**, played in order; the current one is named at the top:
   1. ☀️ Meet the family
@@ -52,6 +52,7 @@ Both eclipses need the Sun, Earth and Moon in a straight line. The only differen
   - **🔊 Sound effects:** on or off.
 
   All of these choices are remembered.
+- **🔭 See the real sizes!** (bottom left, under the small "Not to scale" note). Animates to true relative sizes and distances: a tiny Earth, a tiny far-away Moon, and a giant Sun. "Space is really, really big!" Snapping and lessons pause until you switch back.
 - **Progress is saved** in the browser, and ↺ starts over (with a grown-up check).
 - **Kid-friendly UI.** Big tap targets, the rounded Fredoka font, works on tablets (landscape and portrait) and phones, and respects **reduced motion**.
 
@@ -125,7 +126,7 @@ The simulator keeps the science right while staying simple for young kids:
 - The eclipsed Moon looks **red** because Earth's air bends and filters sunlight, like the light at sunset.
 - **Never look at the Sun without proper eclipse glasses.** Regular sunglasses are not enough. The app keeps this rule simple on purpose.
 - **Lunar eclipses are safe** to watch with your eyes.
-- The view is **not to scale**: sizes and distances are squeezed so the eclipses are easy to see.
+- The normal view is **not to scale** (a label says so): sizes and distances are squeezed so the eclipses are easy to see. The 🔭 real-sizes view shows true relative sizes, with the Sun's distance squeezed to fit.
 
 ## How it was built
 
