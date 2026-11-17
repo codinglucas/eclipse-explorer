@@ -56,8 +56,8 @@ Every lesson should come back to the question: **"Who's in the middle?"**
 
 Two original characters (simple, cute, built from basic shapes/SVG — do **not** copy any existing cartoon character). They appear at different times and explain different things.
 
-### ⭐ Stella the Star
-- A small glowing yellow star with a face, gently pulsing/twinkling.
+### ⭐ Proxima the Star
+- Named after **Proxima Centauri**, the closest star to the Sun. A small glowing orange-red star (a red dwarf) with a face, gently pulsing/twinkling.
 - **Explains light-related things:** the Sun is a star that makes its own light, light travels in straight lines, objects block light and make shadows, why the Moon "shines" (it reflects sunlight), why the eclipsed Moon turns red (sunlight bending through Earth's air, like a sunset).
 - Appears on the **left** side of the screen, floats in with a sparkle.
 
@@ -69,7 +69,7 @@ Two original characters (simple, cute, built from basic shapes/SVG — do **not*
 ### Rules for both
 - Only **one guide talks at a time**; the other is hidden or small and dimmed.
 - Each guide speaks in a **speech bubble with one short sentence at a time** (max ~15 words, simple vocabulary for ages 6–8), then shows a big **"Next ➜"** button.
-- **Read-aloud:** a 🔊 button on every bubble uses the browser's `speechSynthesis` to read the text. Give Stella and Kai slightly different voice pitch/rate so they sound different. Must fail gracefully if speech isn't available.
+- **Read-aloud:** a 🔊 button on every bubble uses the browser's `speechSynthesis` to read the text. Give Proxima and Kai slightly different voice pitch/rate so they sound different. Must fail gracefully if speech isn't available.
 
 ## 4. "Explore more!" on every explanation
 
@@ -83,7 +83,7 @@ Every speech bubble has an **"Explore more! 🔭"** button next to "Next".
 ```js
 {
   id: "solar-blocking",
-  guide: "kai",            // "stella" | "kai"
+  guide: "kai",            // "proxima" | "kai"
   text: "The Moon is blocking the Sun!",
   more: "The Moon is 400 times smaller than the Sun, but the Sun is about 400 times farther away. That's why they look the same size in the sky!",
   action: null,            // optional: what the child must do before Next appears, e.g. "alignSolar"
@@ -122,17 +122,17 @@ Every speech bubble has an **"Explore more! 🔭"** button next to "Next".
 ### Lunar eclipse
 - In space view: Moon slides into Earth's shadow and **slowly turns coppery red** (animate the Moon material color/emissive).
 - Ground view option: night sky with a red Moon, Kai notes it's safe to look at.
-- Stella explains the red color (sunlight bending through Earth's air, like sunsets). Her "Explore more" can go deeper.
+- Proxima explains the red color (sunlight bending through Earth's air, like sunsets). Her "Explore more" can go deeper.
 
 ## 8. Lesson flow (guided)
 
 A top progress bar with chapter dots. Chapters:
 
-1. **Meet the family** — Stella introduces the Sun ("I'm a star, just like the Sun!"). Kai introduces Earth and Moon. Child taps each body to see a one-line fact.
-2. **Light and shadows** — Stella: light goes in straight lines; anything in the way makes a shadow. Turn on shadow cones.
+1. **Meet the family** — Proxima introduces herself ("I'm the star closest to the Sun!") and the Sun. Kai introduces Earth and Moon. Child taps each body to see a one-line fact.
+2. **Light and shadows** — Proxima: light goes in straight lines; anything in the way makes a shadow. Turn on shadow cones.
 3. **The Moon's trip** — Kai: the Moon travels around Earth about once a month. Child drags the Moon all the way around once (track progress). Optional: show the Moon's phase from Earth in a small corner window.
 4. **Make a solar eclipse!** — Task: put the Moon in the middle. Snap → shadow on Earth → ground view → safety message.
-5. **Make a lunar eclipse!** — Task: put the Earth in the middle. Snap → red Moon → Stella explains red.
+5. **Make a lunar eclipse!** — Task: put the Earth in the middle. Snap → red Moon → Proxima explains red.
 6. **Who's in the middle? (recap quiz)** — Kai shows 3–4 picture questions with big tappable answers (e.g., two diagrams: "Which one is a solar eclipse?"; "Is it safe to look at a lunar eclipse?"). **No fail state:** wrong answers get a gentle hint and another try; right answers get confetti and a cheer.
 7. **Free play unlocked** 🎉 — a "Free Play" mode where the child can move the Moon freely and trigger eclipses anytime. Guides only pop up briefly when an eclipse happens.
 
@@ -159,7 +159,7 @@ The child can **go back** to any completed chapter from the progress bar. Rememb
 1. **Scene skeleton** — `index.html` with Three.js via import map; Sun, Earth, Moon, orbit line, starfield, lighting, real shadows, camera controls, reset view. ✅ Check: it opens by double-click and shadows render.
 2. **Moon interaction** — drag along orbit (mouse + touch), ◀ ▶ buttons, alignment detection, snap assist with ding + glow.
 3. **Eclipse effects** — shadow cones toggle; solar shadow on Earth; red lunar Moon; ground view for both eclipses with sky darkening/corona.
-4. **Guides** — Stella and Kai visuals, enter/exit animations, speech bubbles, Next, Explore more/Show less, read-aloud with different voices.
+4. **Guides** — Proxima and Kai visuals, enter/exit animations, speech bubbles, Next, Explore more/Show less, read-aloud with different voices.
 5. **Lessons** — `LESSONS` data array + lesson engine (steps, required actions, scene effects), progress bar, chapters 1–5.
 6. **Recap quiz + Free play** — chapter 6 quiz with no fail state, confetti; chapter 7 free play unlock; localStorage progress.
 7. **Scale toggle** — real-sizes animation and Kai's "Space is big" moment.
