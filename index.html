@@ -71,6 +71,7 @@
       display: flex;
       gap: 12px;
     }
+    @media (max-width: 560px) { #hud-bottom-right { gap: 8px; } }
 
     #hud-bottom-center {
       position: fixed;
@@ -89,12 +90,15 @@
       touch-action: none; /* holding the button must not scroll or zoom */
     }
     .btn-arrow.held { background: var(--ui-accent); transform: scale(0.94); }
-    #moon-pad-label {
-      color: #e8e2ff;
-      font-size: 18px;
-      font-weight: 600;
-      pointer-events: none;
+    /* Play / Pause sits between the arrows. While paused it glows yellow: "tap me to start the Moon again". */
+    #btn-play {
+      height: 72px;
+      min-width: 148px;
+      font-size: 22px;
     }
+    #btn-play svg { width: 26px; height: 26px; fill: currentColor; flex: 0 0 auto; }
+    #btn-play.playing .icon-play, #btn-play:not(.playing) .icon-pause { display: none; }
+    #btn-play:not(.playing) { background: var(--ui-accent); }
 
     #hud-top-right {
       position: fixed;
@@ -123,6 +127,8 @@
       flex-direction: column;
       gap: 8px;
       animation: bubble-in 0.2s ease-out;
+      max-height: calc(100vh - max(16px, env(safe-area-inset-top)) - 84px);
+      overflow-y: auto;
     }
     #settings-panel[hidden] { display: none; }
     .settings-head { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 0 8px; font-size: 20px; font-weight: 700; }
@@ -147,6 +153,23 @@
     .setting-icon { font-size: 28px; width: 34px; text-align: center; flex: 0 0 auto; }
     .setting-text { flex: 1 1 auto; display: flex; flex-direction: column; gap: 2px; }
     .setting-text small { font-size: 14px; font-weight: 500; color: #6a5fa8; }
+    /* Moon speed: three big choices instead of a fiddly slider */
+    .setting-speed { flex-wrap: wrap; cursor: default; }
+    .speed-choices { display: flex; gap: 6px; width: 100%; }
+    .speed-choices button {
+      flex: 1 1 0;
+      min-height: 52px;
+      padding: 0 6px;
+      border: 3px solid #e4defa;
+      border-radius: 14px;
+      background: #fff;
+      color: var(--ui-text);
+      font: 600 17px/1 "Fredoka", system-ui, sans-serif;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .speed-choices button[aria-pressed="true"] { background: #fff3c4; border-color: var(--ui-accent); }
+    .speed-choices button:focus-visible { outline: 4px solid var(--ui-accent); outline-offset: 2px; }
     .switch {
       position: relative;
       flex: 0 0 auto;
@@ -170,28 +193,6 @@
     }
     .setting-row[aria-pressed="true"] .switch { background: #3fb15a; }
     .setting-row[aria-pressed="true"] .switch::after { transform: translateX(24px); }
-
-    .btn-big {
-      min-height: 68px;
-      padding: 0 30px;
-      font-size: 26px;
-      font-weight: 700;
-    }
-    #btn-ground {
-      position: fixed;
-      left: 50%;
-      bottom: calc(max(16px, env(safe-area-inset-bottom)) + 92px);
-      transform: translateX(-50%);
-      background: var(--ui-accent);
-      white-space: nowrap;
-      animation: pop-in 0.35s ease-out;
-    }
-    #btn-ground:active { transform: translateX(-50%) scale(0.94); }
-    #btn-ground[hidden] { display: none; }
-    @keyframes pop-in {
-      from { opacity: 0; transform: translateX(-50%) scale(0.7); }
-      to   { opacity: 1; transform: translateX(-50%) scale(1); }
-    }
 
     /* ---------- Ground view (what people on Earth see) ---------- */
     #ground {
@@ -259,13 +260,29 @@
       transform: translateX(-50%);
     }
     #btn-replay:active { transform: translateX(-50%) scale(0.94); }
+    /* Shown under a daytime sky in the live full-screen view */
+    #ground-sun-tip {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      bottom: max(16px, env(safe-area-inset-bottom));
+      width: fit-content;
+      margin: 0 auto;
+      padding: 8px 18px;
+      border-radius: 22px; /* still looks right when the text wraps to two lines on a phone */
+      text-align: center;
+      font-size: 16px;
+      line-height: 1.2;
+    }
+    #ground-sun-tip[hidden] { display: none; }
 
     @media (max-width: 560px) {
-      #btn-ground { font-size: 22px; padding: 0 22px; }
       #scene-switch button { font-size: 18px; padding: 0 14px; }
       .chip { font-size: 17px; }
     }
     .btn-round { width: var(--tap); padding: 0; font-size: 24px; }
+    .btn-zoom { font-size: 34px; font-weight: 700; line-height: 1; touch-action: manipulation; }
+    .btn-zoom:disabled { opacity: 0.4; }
 
     /* Narrower screens: Reset view moves to the top-left */
     @media (max-width: 860px) {
@@ -277,7 +294,9 @@
       }
     }
     @media (max-width: 560px) {
-      #moon-pad-label { display: none; }
+      #hud-bottom-center { gap: 8px; }
+      .btn-arrow, #btn-play { width: 60px; height: 60px; min-width: 60px; padding: 0; }
+      #btn-play .label { display: none; }
     }
 
     /* ---------- Guides: Proxima the Star and Captain Kai ---------- */
@@ -417,7 +436,7 @@
     .bubble .btn-action { background: #fff3c4; border-color: var(--ui-accent); }
     #guide-dock.quick .bubble { padding-bottom: 14px; }
 
-    /* ✕ hides the bubble; a small button brings the guide back */
+    /* ✕ closes the tutorial for good (Learning mode in ⚙️ brings the lessons back) */
     #btn-hide-guide {
       position: absolute;
       top: -20px;
@@ -433,22 +452,8 @@
     .side-left  #btn-hide-guide { right: -14px; }
     .side-right #btn-hide-guide { left: -14px; }
     #btn-hide-guide[hidden] { display: none; }
-    #btn-show-guide {
-      position: fixed;
-      z-index: 40;
-      bottom: calc(max(16px, env(safe-area-inset-bottom)) + 92px);
-      border: 3px solid var(--ui-accent);
-      font-size: 20px;
-    }
-    body.ground-open #btn-show-guide { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 160px); }
-    #btn-show-guide.side-left  { left: max(16px, env(safe-area-inset-left)); }
-    #btn-show-guide.side-right { right: max(16px, env(safe-area-inset-right)); }
-    #btn-show-guide[hidden] { display: none; }
-    #btn-show-guide.has-new { animation: nudge 1.2s ease-in-out infinite; background: #fff3c4; }
     @keyframes nudge { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
 
-    /* While a guide is talking, the space "See it from Earth" button lives in the bubble instead */
-    body.guide-open #btn-ground { display: none; }
 
     /* Narrow screens: bubble docks across the bottom, the guide peeks over its corner */
     @media (max-width: 700px) {
@@ -466,13 +471,13 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .proxima-body, .fig-kai, .kai-arm, .sparkle, #btn-show-guide.has-new, #btn-next.ready { animation: none !important; }
+      .proxima-body, .fig-kai, .kai-arm, .sparkle, #btn-next.ready { animation: none !important; }
       #guide-dock.entering .guide-figure, #guide-dock.entering .bubble, .bubble.pop { animation: fade-in 0.2s both !important; }
       #guide-dock.leaving { transform: none !important; }
       @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
     }
 
-    /* ---------- Lessons: chapter progress bar, task chip, fact labels ---------- */
+    /* ---------- Lessons: chapter title, task chip, fact labels ---------- */
     #progress {
       position: fixed;
       z-index: 5;
@@ -487,46 +492,6 @@
     }
     #progress > * { pointer-events: auto; }
     #progress[hidden] { display: none; }
-    #progress-dots {
-      position: relative;
-      display: flex;
-      gap: 8px;
-      margin: 0;
-      padding: 6px;
-      list-style: none;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.16);
-    }
-    .chapter-dot {
-      position: relative;
-      width: 56px;
-      height: 56px;
-      padding: 0;
-      border: 3px solid transparent;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.9);
-      color: var(--ui-text);
-      font: 700 22px/1 "Fredoka", system-ui, sans-serif;
-      cursor: pointer;
-      transition: transform 0.15s ease, background 0.2s ease;
-    }
-    .chapter-dot:active { transform: scale(0.92); }
-    .chapter-dot:focus-visible { outline: 4px solid var(--ui-accent); outline-offset: 2px; }
-    .chapter-dot.current { border-color: var(--ui-accent); background: #fff3c4; transform: scale(1.08); }
-    .chapter-dot.done::after {
-      content: "✓";
-      position: absolute;
-      right: -4px;
-      bottom: -4px;
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      background: #3fb15a;
-      color: #fff;
-      font-size: 14px;
-      line-height: 22px;
-    }
-    .chapter-dot:disabled { cursor: default; opacity: 0.45; background: rgba(255, 255, 255, 0.6); }
     #progress-row { display: flex; align-items: center; gap: 8px; }
     #btn-start-over {
       min-width: 40px;
@@ -603,8 +568,6 @@
       #progress { top: calc(max(16px, env(safe-area-inset-top)) + 70px); }
     }
     @media (max-width: 560px) {
-      .chapter-dot { width: 44px; height: 44px; font-size: 18px; }
-      #progress-dots { gap: 4px; }
       #progress-title { font-size: 15px; }
       #task-chip { font-size: 16px; }
       #task-chip .meter { width: 90px; }
@@ -675,6 +638,77 @@
       .quiz-answer.wrong, .quiz-answer.right, #quiz { animation: none; }
     }
 
+    /* ---------- 🌍 View-from-Earth frame: a small live picture of the sky (top-left) ---------- */
+    #earth-frame {
+      position: fixed;
+      z-index: 4;
+      top: max(16px, env(safe-area-inset-top));
+      left: max(16px, env(safe-area-inset-left));
+      width: 220px;
+      border: 4px solid #fff;
+      border-radius: 20px;
+      background: #fff;
+      box-shadow: var(--ui-shadow);
+      overflow: hidden;
+      /* It is a button: tapping it opens the same view full screen */
+      display: block;
+      padding: 0;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+      transition: transform 0.12s ease;
+    }
+    #earth-frame:hover { transform: scale(1.03); }
+    #earth-frame:active { transform: scale(0.97); }
+    #earth-frame:focus-visible { outline: 4px solid var(--ui-accent); outline-offset: 3px; }
+    #earth-frame[hidden] { display: none; }
+    .ef-zoom {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+      display: grid;
+      place-items: center;
+    }
+    .ef-zoom svg { width: 14px !important; height: 14px !important; fill: none; stroke: var(--ui-text); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+    #earth-frame svg { display: block; width: 100%; height: auto; }
+    .ef-caption { display: block; padding: 5px 10px 6px; line-height: 1.15; color: var(--ui-text); }
+    .ef-caption b { display: block; font-size: 15px; font-weight: 700; }
+    .ef-caption span { display: block; font-size: 14px; font-weight: 500; color: #5a4f99; }
+    /* Narrower screens: Reset view takes the top-left corner, so the smaller frame moves under the ⚙️ button… */
+    @media (max-width: 860px) {
+      #earth-frame {
+        top: calc(max(16px, env(safe-area-inset-top)) + 68px);
+        left: auto;
+        right: max(16px, env(safe-area-inset-right));
+        width: 150px;
+        border-width: 3px;
+        border-radius: 16px;
+      }
+      .ef-caption b { font-size: 13px; }
+      .ef-caption span { font-size: 12px; }
+    }
+    /* …and on phones and small windows it sits on the left, just below the chapter title. */
+    @media (max-width: 790px) {
+      #earth-frame {
+        top: calc(max(16px, env(safe-area-inset-top)) + 116px);
+        right: auto;
+        left: max(16px, env(safe-area-inset-left));
+        width: 132px;
+      }
+      .ef-caption { padding: 4px 7px 5px; }
+      .ef-caption b { font-size: 12px; white-space: nowrap; }
+    }
+    @media (max-width: 790px) and (max-height: 720px) {
+      #earth-frame { width: 116px; }
+      .ef-caption b { font-size: 11px; }
+      .ef-caption span { font-size: 11px; }
+    }
+
     /* ---------- Real-sizes toggle (bottom-left); its small top line is the "Not to scale" label ---------- */
     #btn-scale {
       position: fixed;
@@ -723,6 +757,16 @@
     #sun-far-label.show { opacity: 1; }
     @media (prefers-reduced-motion: reduce) { #sun-far-label { transition: none; } }
 
+    /* Medium widths (861–1060 px): icons only on the bottom row, so ◀ ▶, Play, zoom and Reset never overlap */
+    @media (min-width: 861px) and (max-width: 1060px) {
+      #btn-play .label, #btn-reset-view .label, #btn-scale .scale-main .label { display: none; }
+      #btn-play { min-width: 72px; width: 72px; padding: 0; }
+      #btn-reset-view { width: var(--tap); padding: 0; font-size: 24px; }
+      #btn-scale { padding: 6px 12px; min-width: 64px; }
+      #btn-scale .scale-main { font-size: 24px; }
+      #btn-scale .scale-note { font-size: 11px; }
+    }
+
     /* ---------- Loading / error overlay ---------- */
     #overlay {
       position: fixed;
@@ -746,7 +790,6 @@
 
     @media (prefers-reduced-motion: reduce) {
       .btn, #overlay, #ground { transition: none; }
-      #btn-ground { animation: none; }
       /* Safety net: every remaining CSS animation/transition becomes instant. */
       *, *::before, *::after {
         animation-duration: 0.01ms !important;
@@ -768,6 +811,71 @@
 <body>
   <canvas id="scene" aria-label="A 3D view of the Sun, the Earth and the Moon"></canvas>
 
+  <!-- 🌍 View from Earth: a small live picture of what people on Earth see right now. Drawn in SVG, moved from JS.
+       Tapping it opens the same view full screen. -->
+  <button id="earth-frame" type="button" aria-label="View from Earth. Tap to see it big." title="Tap to see it big">
+    <span class="ef-zoom" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" /></svg></span>
+    <svg viewBox="0 0 240 132" aria-hidden="true">
+      <defs>
+        <linearGradient id="ef-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop id="ef-sky-top" offset="0" stop-color="#3aa0ff" />
+          <stop id="ef-sky-bottom" offset="1" stop-color="#d6f1ff" />
+        </linearGradient>
+        <radialGradient id="ef-sunglow">
+          <stop offset="0.3" stop-color="#fff6c8" stop-opacity="0.95" />
+          <stop offset="0.55" stop-color="#ffe27a" stop-opacity="0.35" />
+          <stop offset="1" stop-color="#ffd23f" stop-opacity="0" />
+        </radialGradient>
+        <radialGradient id="ef-coronaglow">
+          <stop offset="0.38" stop-color="#ffffff" stop-opacity="1" />
+          <stop offset="0.5" stop-color="#fdf3d2" stop-opacity="0.75" />
+          <stop offset="0.72" stop-color="#cfd8ff" stop-opacity="0.25" />
+          <stop offset="1" stop-color="#cfd8ff" stop-opacity="0" />
+        </radialGradient>
+        <radialGradient id="ef-copper">
+          <stop offset="0" stop-color="#a04628" />
+          <stop offset="0.7" stop-color="#8a3821" />
+          <stop offset="1" stop-color="#5e2418" />
+        </radialGradient>
+        <radialGradient id="ef-earthshadow">
+          <stop offset="0" stop-color="#140d1b" stop-opacity="0.95" />
+          <stop offset="0.545" stop-color="#140d1b" stop-opacity="0.95" />
+          <stop offset="0.59" stop-color="#1c1626" stop-opacity="0.32" />
+          <stop offset="0.72" stop-color="#1c1626" stop-opacity="0.1" />
+          <stop offset="0.9" stop-color="#1c1626" stop-opacity="0" />
+        </radialGradient>
+        <clipPath id="ef-clip-sun"><circle cx="120" cy="56" r="25.2" /></clipPath>
+        <clipPath id="ef-clip-moon"><circle cx="120" cy="56" r="24" /></clipPath>
+      </defs>
+      <rect width="240" height="132" fill="url(#ef-sky)" />
+      <g id="ef-stars" opacity="0"></g>
+      <!-- Day side: looking up at the Sun. The Moon only shows where it covers the Sun. -->
+      <g id="ef-day">
+        <circle id="ef-sunglow-c" cx="120" cy="56" r="72" fill="url(#ef-sunglow)" />
+        <circle id="ef-corona" cx="120" cy="56" r="64" fill="url(#ef-coronaglow)" opacity="0" />
+        <circle cx="120" cy="56" r="24" fill="#ffd23f" />
+        <g clip-path="url(#ef-clip-sun)"><circle id="ef-newmoon" cx="300" cy="56" r="25" fill="#17123a" /></g>
+        <circle id="ef-planet" cx="52" cy="80" r="1.6" fill="#fffbe8" opacity="0" />
+        <circle id="ef-diamond" cx="96" cy="56" r="3.2" fill="#ffffff" opacity="0" />
+      </g>
+      <!-- Night side: looking up at the Moon, with its sunny part lit. Earth's shadow slides over it. -->
+      <g id="ef-night" opacity="0">
+        <circle cx="120" cy="56" r="24" fill="#2a2752" />
+        <path id="ef-lit" fill="#f4f1e6" />
+        <g clip-path="url(#ef-clip-moon)">
+          <circle id="ef-umbra" cx="400" cy="56" r="115" fill="url(#ef-earthshadow)" />
+          <circle id="ef-red" cx="120" cy="56" r="24" fill="url(#ef-copper)" opacity="0" />
+          <g fill="#241c38">
+            <g opacity="0.15"><ellipse cx="111.6" cy="47.6" rx="10" ry="8" /><ellipse cx="126.6" cy="52" rx="6.5" ry="9" /><ellipse cx="116.4" cy="65.6" rx="9" ry="5.4" /></g>
+            <g opacity="0.2"><circle cx="112.5" cy="48.5" r="5" /><circle cx="128.4" cy="62.6" r="3.6" /><circle cx="121.5" cy="68.6" r="2.4" /><circle cx="130.5" cy="47" r="2.7" /><circle cx="109.8" cy="62.6" r="3" /></g>
+          </g>
+        </g>
+      </g>
+      <path id="ef-land" d="M0 112 Q 50 96 104 107 T 196 103 T 240 106 V132 H0Z" fill="#6fcf7a" />
+    </svg>
+    <span class="ef-caption"><b>🌍 View from Earth</b><span id="ef-status">Daytime ☀️</span></span>
+  </button>
+
   <button id="btn-scale" class="btn" type="button" aria-pressed="false">
     <span class="scale-note" id="scale-note">Not to scale</span>
     <span class="scale-main">🔭 <span class="label" id="scale-label">See the real sizes!</span></span>
@@ -783,7 +891,6 @@
   <canvas id="confetti" aria-hidden="true"></canvas>
 
   <nav id="progress" aria-label="Chapters" hidden>
-    <ol id="progress-dots"></ol>
     <div id="progress-row">
       <div id="progress-title"></div>
       <button id="btn-start-over" class="btn" type="button" aria-label="Start the lessons over" title="Start the lessons over" hidden>↺</button>
@@ -805,9 +912,33 @@
       <span class="setting-text">Learning mode<small id="learning-sub">Lessons with Proxima and Kai</small></span>
       <span class="switch" aria-hidden="true"></span>
     </button>
+    <button id="btn-earth-frame" class="setting-row" type="button" aria-pressed="true">
+      <span class="setting-icon" aria-hidden="true">🌍</span>
+      <span class="setting-text">View from Earth<small>Small picture of the sky. Tap it to make it big.</small></span>
+      <span class="switch" aria-hidden="true"></span>
+    </button>
+    <div class="setting-row setting-speed" role="group" aria-labelledby="speed-title">
+      <span class="setting-icon" aria-hidden="true">🌙</span>
+      <span class="setting-text" id="speed-title">Moon speed<small>How fast the Moon travels</small></span>
+      <span class="speed-choices">
+        <button type="button" data-speed="slow" aria-pressed="true">🐢 Slow</button>
+        <button type="button" data-speed="medium" aria-pressed="false">🚲 Medium</button>
+        <button type="button" data-speed="fast" aria-pressed="false">🚀 Fast</button>
+      </span>
+    </div>
+    <button id="btn-tilt" class="setting-row" type="button" aria-pressed="false">
+      <span class="setting-icon" aria-hidden="true">🪐</span>
+      <span class="setting-text">Tilted path<small id="tilt-sub">Off: an eclipse on every lap</small></span>
+      <span class="switch" aria-hidden="true"></span>
+    </button>
     <button id="btn-cones" class="setting-row" type="button" aria-pressed="false">
       <span class="setting-icon" aria-hidden="true">🔦</span>
       <span class="setting-text">Shadows<small>Show the dark shadow cones</small></span>
+      <span class="switch" aria-hidden="true"></span>
+    </button>
+    <button id="btn-sunset" class="setting-row" type="button" aria-pressed="false">
+      <span class="setting-icon" aria-hidden="true">🌅</span>
+      <span class="setting-text">Sunset light<small>See why the Moon turns red</small></span>
       <span class="switch" aria-hidden="true"></span>
     </button>
     <button id="btn-sound" class="setting-row" type="button" aria-pressed="true">
@@ -819,15 +950,19 @@
 
   <div id="hud-bottom-center">
     <button id="btn-moon-back" class="btn btn-arrow" type="button" aria-label="Move the Moon back">◀</button>
-    <span id="moon-pad-label">Move the Moon</span>
+    <button id="btn-play" class="btn playing" type="button" aria-label="Pause the Moon">
+      <svg class="icon-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="5" height="16" rx="1.5" /><rect x="14" y="4" width="5" height="16" rx="1.5" /></svg>
+      <svg class="icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z" /></svg>
+      <span class="label" id="play-label">Pause</span>
+    </button>
     <button id="btn-moon-forward" class="btn btn-arrow" type="button" aria-label="Move the Moon forward">▶</button>
   </div>
 
   <div id="hud-bottom-right">
+    <button id="btn-zoom-out" class="btn btn-round btn-zoom" type="button" aria-label="Zoom out" title="Zoom out">−</button>
+    <button id="btn-zoom-in" class="btn btn-round btn-zoom" type="button" aria-label="Zoom in" title="Zoom in">+</button>
     <button id="btn-reset-view" class="btn" type="button" aria-label="Reset view">🎯 <span class="label">Reset view</span></button>
   </div>
-
-  <button id="btn-ground" class="btn btn-big" type="button" hidden>See it from Earth! 🌍</button>
 
   <!-- Ground view: what people standing on Earth see. Drawn in SVG, animated from JS. -->
   <div id="ground" aria-hidden="true">
@@ -857,12 +992,35 @@
           <stop offset="0.35" stop-color="#ff7a45" stop-opacity="0.45" />
           <stop offset="1" stop-color="#ff7a45" stop-opacity="0" />
         </radialGradient>
-        <radialGradient id="g-copper" cx="0.4" cy="0.38">
-          <stop offset="0" stop-color="#e98a55" />
-          <stop offset="0.65" stop-color="#b4482a" />
-          <stop offset="1" stop-color="#7a2817" />
+        <!-- Deep in Earth's shadow the Moon is an even, dim copper red… -->
+        <radialGradient id="g-copper">
+          <stop offset="0" stop-color="#a04628" />
+          <stop offset="0.7" stop-color="#8a3821" />
+          <stop offset="1" stop-color="#5e2418" />
         </radialGradient>
+        <!-- …and brighter, more orange, on the side nearest the edge of the shadow. -->
+        <radialGradient id="g-copper-rim">
+          <stop offset="0" stop-color="#f0a55c" stop-opacity="0.85" />
+          <stop offset="0.55" stop-color="#d9773c" stop-opacity="0.35" />
+          <stop offset="1" stop-color="#d9773c" stop-opacity="0" />
+        </radialGradient>
+        <!-- Earth's shadow: the dark inner shadow (umbra, out to 57% of this circle) looks almost black next to
+             the bright Moon; around it the faint outer shadow (penumbra) only shows close to the umbra's edge. -->
+        <radialGradient id="g-earthshadow">
+          <stop offset="0" stop-color="#140d1b" stop-opacity="0.95" />
+          <stop offset="0.545" stop-color="#140d1b" stop-opacity="0.95" />
+          <stop offset="0.59" stop-color="#1c1626" stop-opacity="0.32" />
+          <stop offset="0.72" stop-color="#1c1626" stop-opacity="0.1" />
+          <stop offset="0.9" stop-color="#1c1626" stop-opacity="0" />
+        </radialGradient>
+        <radialGradient id="g-diamond">
+          <stop offset="0" stop-color="#ffffff" stop-opacity="1" />
+          <stop offset="0.25" stop-color="#fffbe6" stop-opacity="0.8" />
+          <stop offset="1" stop-color="#fff3c4" stop-opacity="0" />
+        </radialGradient>
+        <filter id="f-soft" x="-50%" y="-150%" width="200%" height="400%"><feGaussianBlur stdDeviation="13" /></filter>
         <clipPath id="clip-lmoon"><circle id="clip-lmoon-circle" cx="900" cy="240" r="80" /></clipPath>
+        <clipPath id="clip-sun"><circle id="clip-sun-circle" cx="900" cy="250" r="91.5" /></clipPath>
       </defs>
 
       <rect width="1600" height="900" fill="url(#g-sky)" />
@@ -871,9 +1029,42 @@
       <!-- Solar eclipse sky -->
       <g id="solar-sky">
         <circle id="sun-glow" cx="900" cy="250" r="270" fill="url(#g-sunglow)" />
-        <circle id="sun-corona" cx="900" cy="250" r="240" fill="url(#g-corona)" opacity="0" />
+        <!-- Bright planets pop out in the twilight of totality (the sky never gets as dark as night) -->
+        <g id="ground-planets" opacity="0">
+          <circle cx="655" cy="330" r="13" fill="#ffffff" opacity="0.18" /><circle cx="655" cy="330" r="4.6" fill="#fffbe8" />
+          <circle cx="1235" cy="165" r="9" fill="#ffffff" opacity="0.15" /><circle cx="1235" cy="165" r="3.2" fill="#fff1d6" />
+        </g>
+        <!-- The corona: pearly white, with long soft streamers. Only seen in totality. -->
+        <g id="sun-corona" opacity="0">
+          <g filter="url(#f-soft)" fill="#eef2ff">
+            <ellipse cx="900" cy="250" rx="310" ry="30" transform="rotate(-16 900 250)" opacity="0.55" />
+            <ellipse cx="900" cy="250" rx="255" ry="24" transform="rotate(24 900 250)" opacity="0.45" />
+            <ellipse cx="900" cy="250" rx="205" ry="30" transform="rotate(78 900 250)" opacity="0.32" />
+            <ellipse cx="900" cy="250" rx="235" ry="20" transform="rotate(121 900 250)" opacity="0.38" />
+          </g>
+          <circle cx="900" cy="250" r="240" fill="url(#g-corona)" />
+          <!-- Prominences: small pink-red flames at the Sun's edge -->
+          <g fill="#ff5c8a">
+            <ellipse cx="968" cy="186" rx="7" ry="4" transform="rotate(-43 968 186)" />
+            <ellipse cx="812" cy="281" rx="6" ry="3.5" transform="rotate(-19 812 281)" />
+            <ellipse cx="925" cy="341" rx="5" ry="3" transform="rotate(75 925 341)" />
+          </g>
+        </g>
         <circle id="sun-disc" cx="900" cy="250" r="90" fill="#ffd23f" />
-        <circle id="smoon-disc" cx="600" cy="250" r="90" fill="#17123a" />
+        <!-- In daytime the Moon is invisible against the bright sky: it only shows where it covers the Sun.
+             In a total eclipse the Moon looks a little bigger than the Sun, so it can hide it completely. -->
+        <g clip-path="url(#clip-sun)"><circle id="smoon-disc" cx="1200" cy="250" r="93.6" fill="#17123a" /></g>
+        <!-- Diamond ring and Baily's beads: the last (and first) sparkle of sunlight at the Moon's edge.
+             Drawn around (0,0) with +x pointing away from the Sun's centre; JS moves and turns it. -->
+        <g id="sun-diamond" opacity="0">
+          <circle r="46" fill="url(#g-diamond)" />
+          <path d="M-70 0 L0 -3.2 L70 0 L0 3.2Z M0 -70 L-3.2 0 L0 70 L3.2 0Z" fill="#ffffff" opacity="0.85" />
+          <circle r="7" fill="#ffffff" />
+          <g fill="#ffffff">
+            <circle cx="-0.5" cy="9.5" r="2.6" /><circle cx="-1.4" cy="16" r="2" />
+            <circle cx="-0.6" cy="-10.5" r="2.3" /><circle cx="-2" cy="-19" r="1.7" />
+          </g>
+        </g>
       </g>
 
       <!-- Lunar eclipse sky -->
@@ -881,13 +1072,24 @@
         <circle id="lmoon-halo" cx="900" cy="240" r="210" fill="url(#g-moonglow)" />
         <circle id="lmoon-redhalo" cx="900" cy="240" r="210" fill="url(#g-redglow)" opacity="0" />
         <circle id="lmoon-disc" cx="900" cy="240" r="80" fill="#f4f1e6" />
-        <g fill="#d8d3c4">
-          <circle cx="875" cy="215" r="17" /><circle cx="928" cy="262" r="12" />
-          <circle cx="905" cy="282" r="8" /><circle cx="935" cy="210" r="9" /><circle cx="866" cy="262" r="10" />
-        </g>
         <g clip-path="url(#clip-lmoon)">
-          <circle id="lmoon-umbra" cx="600" cy="240" r="210" fill="#4a2632" opacity="0.88" />
+          <path id="lmoon-dark" fill="#0d0b2a" opacity="0.94" /> <!-- the Moon's unlit part (live view only) -->
+          <circle id="lmoon-umbra" cx="300" cy="240" r="368" fill="url(#g-earthshadow)" />
           <circle id="lmoon-red" cx="900" cy="240" r="80" fill="url(#g-copper)" opacity="0" />
+          <circle id="lmoon-rim" cx="900" cy="240" r="96" fill="url(#g-copper-rim)" opacity="0" />
+          <!-- The Moon's dark "seas" and craters stay visible on top of the shadow and the red,
+               so an eclipsed Moon still looks like the Moon (not like a little Sun). -->
+          <g fill="#241c38">
+            <g opacity="0.15">
+              <ellipse cx="872" cy="212" rx="34" ry="27" /><ellipse cx="922" cy="226" rx="22" ry="30" />
+              <ellipse cx="888" cy="272" rx="30" ry="18" /><ellipse cx="941" cy="275" rx="14" ry="12" />
+            </g>
+            <g opacity="0.2">
+              <circle cx="875" cy="215" r="17" /><circle cx="928" cy="262" r="12" />
+              <circle cx="905" cy="282" r="8" /><circle cx="935" cy="210" r="9" /><circle cx="866" cy="262" r="10" />
+              <circle cx="900" cy="186" r="6" /><circle cx="848" cy="238" r="5" /><circle cx="952" cy="240" r="6" />
+            </g>
+          </g>
         </g>
       </g>
 
@@ -925,6 +1127,7 @@
       <button type="button" data-scene="city" aria-pressed="false">🏙️ City</button>
     </div>
     <button id="btn-replay" class="btn" type="button" hidden>↻ Watch again</button>
+    <div id="ground-sun-tip" class="chip" hidden>🕶️ Never look at the real Sun without eclipse glasses!</div>
 
   </div>
 
@@ -998,7 +1201,7 @@
       <span class="sparkle s3"><svg viewBox="0 0 20 20"><path d="M10 0 Q11.5 8.5 20 10 Q11.5 11.5 10 20 Q8.5 11.5 0 10 Q8.5 8.5 10 0Z" fill="#fff6b0"/></svg></span>
     </div>
     <div class="bubble" id="bubble" role="dialog" aria-labelledby="bubble-text">
-      <button id="btn-hide-guide" class="btn" type="button" aria-label="Hide the speech bubble">✕</button>
+      <button id="btn-hide-guide" class="btn" type="button" aria-label="Close the tutorial" title="Close the tutorial">✕</button>
       <div class="bubble-name" id="bubble-name"></div>
       <div class="bubble-body">
         <div class="bubble-icon" id="bubble-icon" hidden></div>
@@ -1014,8 +1217,6 @@
       </div>
     </div>
   </div>
-
-  <button id="btn-show-guide" class="btn side-right" type="button" hidden>💬 Kai</button>
 
   <div id="overlay" role="status">
     <div>🌍 Getting space ready…</div>
@@ -1039,12 +1240,23 @@
     /* =====================================================================
        CONFIG
        All the numbers that shape the scene live here.
-       The friendly view is NOT to scale (see the "Real sizes" toggle later).
+       The view is not to scale: sizes and distances are squeezed so eclipses are easy to see.
        ===================================================================== */
     const CONFIG = {
       sun:   { position: new THREE.Vector3(-20, 0, 0), radius: 5, color: 0xffd23f, glowColor: 0xffb703, glowSize: 26 },
       earth: { position: new THREE.Vector3(8, 0, 0),  radius: 2.6, spinSpeed: 0.12, tilt: 0.41 },
-      moon:  { radius: 0.95, orbitRadius: 7.5, startAngle: Math.PI * 0.62 },
+      moon:  {
+        radius: 0.95, orbitRadius: 7.5, startAngle: Math.PI * 0.62,
+        // The Moon's path is tilted against the Sun–Earth line, so most months the Moon passes above or
+        // below the line-up and there is no eclipse. The real tilt is only about 5°; it is drawn much
+        // steeper here because Earth and the Moon are drawn far too big for their distance, and with
+        // a 5° tilt their shadows could never miss. Switched on with ⚙️ "Tilted path" (off by default).
+        tiltDeg: 45,
+        // The two points where the tilted path crosses the line (the "nodes") slowly turn the other way
+        // round, once in about 11.74 Moon laps (one eclipse year). So about every 6th lap they point at
+        // the Sun: an eclipse season.
+        nodeLaps: 11.74,
+      },
       orbitDots: { count: 80, size: 0.11, color: 0xb9b0ff },
       stars: { count: 1800, radius: 220 },
       shadows: { mapSize: 2048, halfSize: 10.5 },   // shadow camera box around the Earth–Moon system
@@ -1055,9 +1267,11 @@
         direction: new THREE.Vector3(0.12, 0.42, 1).normalize(), // where the camera sits, seen from the target
         fitWidth: 45,      // world units that must fit across the screen
         fitHeight: 20,
-        minDistance: 18,
+        minDistance: 12,   // a close look; keepCameraOutOfBodies() stops the camera going inside anything
         maxDistance: 90,
       },
+      // The Moon travels by itself until the child pauses it or moves it. Degrees per second for each ⚙️ speed.
+      autoplay: { speedsDeg: { slow: 10, medium: 25, fast: 60 } },
       interaction: {
         snapDeg: 10,          // closer than this to a perfect line-up → snap into place
         releaseDeg: 15,       // once snapped, the Moon lets go after this much (stops jitter)
@@ -1069,6 +1283,9 @@
       },
       glow: { color: 0xffe08a },
       cones: { earthLength: 16, opacity: 1 },
+      // The Moon's shadow on Earth: a small dark spot (umbra: total eclipse there) inside a wide, faint
+      // shadow (penumbra: partial eclipse there). The real spot is even smaller; this one stays visible.
+      moonShadow: { umbraRadius: 0.16, penumbraRadius: 1.45 },
       redMoon: { tint: 0xe0a080, emissive: 0xb0401c, emissiveIntensity: 0.75, riseSeconds: 3 },
       // True relative sizes (Earth radius = 0.2 units). The Sun's distance is squeezed so it fits.
       realScale: {
@@ -1131,11 +1348,10 @@
     controls.zoomSpeed = 0.7;
     controls.minDistance = CONFIG.camera.minDistance;
     controls.maxDistance = CONFIG.camera.maxDistance;
-    // Keep kids from getting lost: no flipping under the orbit plane, limited spin around.
-    controls.minPolarAngle = 0.25;
-    controls.maxPolarAngle = Math.PI / 2 - 0.02;
-    controls.minAzimuthAngle = -1.1;
-    controls.maxAzimuthAngle = 1.1;
+    // Look from anywhere: all the way around, and from straight above to straight below.
+    // "Reset view" brings a lost explorer home.
+    controls.minPolarAngle = 0;
+    controls.maxPolarAngle = Math.PI;
 
     /** Distance at which the whole Sun–Earth–Moon line fits the current screen. */
     function fitDistance() {
@@ -1364,6 +1580,45 @@
     earth.receiveShadow = true;
     earthTilt.add(earth);
 
+    // The Moon's shadow on Earth is drawn here instead of with the ordinary shadow map, because the real
+    // thing is not a hard Moon-sized disc: it is a small dark spot (umbra) in the middle of a wide, faint
+    // shadow (penumbra). Sunlight travels along +x, so the shadow lies straight "behind" the Moon.
+    const moonShadowUniforms = {
+      uMoonPos: { value: new THREE.Vector3() },
+      uEarthPos: { value: CONFIG.earth.position.clone() },
+      uShadowDir: { value: new THREE.Vector3().subVectors(CONFIG.earth.position, CONFIG.sun.position).normalize() },
+      uMoonShadow: { value: new THREE.Vector2(CONFIG.moonShadow.umbraRadius, CONFIG.moonShadow.penumbraRadius) },
+    };
+    let moonShadowInShader = false;
+    earth.material.onBeforeCompile = (shader) => {
+      const v = shader.vertexShader, f = shader.fragmentShader;
+      const ok = v.includes("#include <common>") && v.includes("#include <project_vertex>")
+        && f.includes("#include <common>") && f.includes("#include <dithering_fragment>");
+      if (!ok) { moon.castShadow = true; return; } // unknown shader layout: fall back to the plain shadow
+      moonShadowInShader = true;
+      Object.assign(shader.uniforms, moonShadowUniforms);
+      shader.vertexShader = v
+        .replace("#include <common>", "#include <common>\nvarying vec3 vEclipsePos;")
+        .replace("#include <project_vertex>", "#include <project_vertex>\nvEclipsePos = (modelMatrix * vec4(transformed, 1.0)).xyz;");
+      shader.fragmentShader = f
+        .replace("#include <common>", `#include <common>
+          uniform vec3 uMoonPos;
+          uniform vec3 uEarthPos;
+          uniform vec3 uShadowDir;
+          uniform vec2 uMoonShadow;
+          varying vec3 vEclipsePos;`)
+        .replace("#include <dithering_fragment>", `#include <dithering_fragment>
+          {
+            vec3 rel = vEclipsePos - uMoonPos;
+            float along = dot(rel, uShadowDir);                    // > 0: this spot is behind the Moon
+            float off = length(rel - along * uShadowDir);          // distance from the middle of the shadow
+            float sunny = smoothstep(0.0, 0.25, -dot(normalize(vEclipsePos - uEarthPos), uShadowDir));
+            float penumbra = 1.0 - smoothstep(uMoonShadow.x, uMoonShadow.y, off);
+            float umbra = 1.0 - smoothstep(uMoonShadow.x * 0.5, uMoonShadow.x * 1.3, off);
+            gl_FragColor.rgb *= 1.0 - step(0.0, along) * sunny * (0.62 * penumbra + 0.3 * umbra);
+          }`);
+    };
+
     // --- Moon ---
     const moonTex = makeMoonTextures();
     const moon = new THREE.Mesh(
@@ -1373,7 +1628,7 @@
         emissive: CONFIG.redMoon.emissive, emissiveMap: moonTex.map, emissiveIntensity: 0, // red glow, off for now
       })
     );
-    moon.castShadow = true;
+    moon.castShadow = false; // its shadow on Earth is drawn in Earth's shader (see moonShadowUniforms above)
     moon.receiveShadow = true;
     earthSystem.add(moon);
 
@@ -1384,20 +1639,54 @@
     );
     moon.add(moonHit);
 
-    // Current sizes. They change smoothly when "See the real sizes!" is switched on or off.
+    // The sizes everything is drawn at.
     const sizes = {
       orbitRadius: CONFIG.moon.orbitRadius,
       earthRadius: CONFIG.earth.radius,
       moonRadius: CONFIG.moon.radius,
     };
 
+    /* The Moon's tilted path. `node` is the direction (in the flat Sun–Earth plane) of the line where the
+       path crosses that plane. Eclipses need the Moon on that line AND that line pointing at the Sun
+       (node = 0 or PI), because only then are new Moon and full Moon exactly on the Sun–Earth line. */
+    const orbitTilt = {
+      // Start so that the path's crossing line points at the Sun just as the Moon first gets there.
+      node: (Math.PI - CONFIG.moon.startAngle) / CONFIG.moon.nodeLaps,
+      settled: false,                      // true once a paused Moon's path has turned to "eclipse season"
+      on: false,                           // ⚙️ "Tilted path" switch. Off (the default): a flat path, an eclipse every lap
+      amount: 0,                           // 0 = flat … 1 = fully tilted (glides when the switch is flipped)
+      quat: new THREE.Quaternion(),
+      unquat: new THREE.Quaternion(),
+      normal: new THREE.Vector3(0, 1, 0),
+    };
+    const tiltAxis = new THREE.Vector3();
+    /** Where the Moon is (relative to Earth) at an angle along its tilted path. */
+    function moonOffsetAt(angle, target) {
+      return target.set(Math.cos(angle) * sizes.orbitRadius, 0, -Math.sin(angle) * sizes.orbitRadius)
+        .applyQuaternion(orbitTilt.quat);
+    }
+    function refreshOrbitTilt() {
+      tiltAxis.set(Math.cos(orbitTilt.node), 0, -Math.sin(orbitTilt.node));
+      // (Tilted this way round, the path first looks like the familiar flat oval from the starting view.)
+      orbitTilt.quat.setFromAxisAngle(tiltAxis, -THREE.MathUtils.degToRad(CONFIG.moon.tiltDeg) * orbitTilt.amount);
+      orbitTilt.unquat.copy(orbitTilt.quat).invert();
+      orbitTilt.normal.set(0, 1, 0).applyQuaternion(orbitTilt.quat);
+    }
+    const TILT_KEY = "eclipse-explorer.tilt";
+    try { orbitTilt.on = localStorage.getItem(TILT_KEY) === "1"; } catch { /* storage blocked: flat it is */ }
+    orbitTilt.amount = orbitTilt.on ? 1 : 0;
+    refreshOrbitTilt();
+    function setOrbitTilt(on) {
+      orbitTilt.on = Boolean(on);
+      orbitTilt.settled = false; // a paused Moon's path turns to eclipse season again
+      try { localStorage.setItem(TILT_KEY, orbitTilt.on ? "1" : "0"); } catch { /* fine */ }
+      emit("orbittilt", { on: orbitTilt.on });
+    }
+
     function placeMoon(angle) {
-      moon.position.set(
-        Math.cos(angle) * sizes.orbitRadius,
-        0,
-        -Math.sin(angle) * sizes.orbitRadius
-      );
+      moonOffsetAt(angle, moon.position);
       moon.rotation.y = angle; // same face toward Earth, like the real Moon
+      moonShadowUniforms.uMoonPos.value.copy(earthSystem.position).add(moon.position);
     }
     placeMoon(state.moonAngle);
 
@@ -1416,6 +1705,7 @@
       }
     }
     earthSystem.add(orbitDots);
+    orbitDots.quaternion.copy(orbitTilt.quat);
 
     /* =====================================================================
        LIGHT & SHADOWS
@@ -1507,19 +1797,29 @@
           }`,
       });
     }
-    function makeShadowCone(radius, length) {
-      const cone = new THREE.Mesh(new THREE.ConeGeometry(radius, length, 48, 1, true), makeConeMaterial(length));
-      cone.rotation.z = -Math.PI / 2; // tip points along +x, away from the Sun
+    /** A shadow drawn as a see-through cone from a body (radius nearR) to farR, `length` away from the Sun. */
+    function makeShadowCone(nearR, farR, length, strength = 1) {
+      // CylinderGeometry's top becomes the far end once the cone is turned to point along +x.
+      const cone = new THREE.Mesh(new THREE.CylinderGeometry(farR, nearR, length, 48, 1, true), makeConeMaterial(length));
+      cone.rotation.z = -Math.PI / 2; // points along +x, away from the Sun
       cone.userData.length = length;
+      cone.userData.strength = strength;
       cone.visible = false;
       cone.renderOrder = 2;
       earthSystem.add(cone);
       return cone;
     }
-    const earthCone = makeShadowCone(CONFIG.earth.radius, CONFIG.cones.earthLength);
-    earthCone.position.x = CONFIG.cones.earthLength / 2;
-    // The Moon's cone just reaches Earth when the Moon is in the middle (like a total solar eclipse).
-    const moonCone = makeShadowCone(CONFIG.moon.radius, CONFIG.moon.orbitRadius - CONFIG.earth.radius + 0.4);
+    // Each body has two shadows. The dark inner one (umbra) slowly narrows; the faint outer one (penumbra) widens.
+    // Earth's umbra is still much wider than the Moon where the Moon crosses it, as in a real lunar eclipse.
+    const earthCone = makeShadowCone(CONFIG.earth.radius, CONFIG.earth.radius * 0.85, CONFIG.cones.earthLength);
+    const earthPenumbra = makeShadowCone(CONFIG.earth.radius, CONFIG.earth.radius * 1.3, CONFIG.cones.earthLength, 0.3);
+    earthCone.position.x = earthPenumbra.position.x = CONFIG.cones.earthLength / 2;
+    // The Moon's umbra shrinks to a small spot just as it reaches Earth (a total solar eclipse there),
+    // while its penumbra spreads wide (a partial eclipse there). Same sizes as the shadow drawn on Earth.
+    const moonConeLength = CONFIG.moon.orbitRadius - CONFIG.earth.radius + 0.4;
+    const moonCone = makeShadowCone(CONFIG.moon.radius, CONFIG.moonShadow.umbraRadius, moonConeLength);
+    const moonPenumbra = makeShadowCone(CONFIG.moon.radius, CONFIG.moonShadow.penumbraRadius, moonConeLength, 0.3);
+    const shadowCones = [earthCone, earthPenumbra, moonCone, moonPenumbra];
 
     function setShadowCones(on) {
       state.conesOn = Boolean(on);
@@ -1529,12 +1829,10 @@
     // --- Red Moon during a lunar eclipse ---
     // How deep the Moon sits inside Earth's (straight, sun-parallel) shadow: 0 = outside, 1 = fully in.
     function moonShadowDepth() {
-      const a = state.moonAngle;
-      const along = Math.cos(a) * sizes.orbitRadius;
-      if (along <= 0) return 0; // Moon is on the Sun's side of Earth
-      const lateral = Math.abs(Math.sin(a)) * sizes.orbitRadius;
+      if (moon.position.x <= 0) return 0; // Moon is on the Sun's side of Earth
+      const offLine = Math.hypot(moon.position.y, moon.position.z); // above/below and sideways
       return THREE.MathUtils.clamp(
-        (sizes.earthRadius + sizes.moonRadius - lateral) / (2 * sizes.moonRadius), 0, 1);
+        (sizes.earthRadius + sizes.moonRadius - offLine) / (2 * sizes.moonRadius), 0, 1);
     }
     const moonWhite = new THREE.Color(0xffffff);
     const moonTint = new THREE.Color(CONFIG.redMoon.tint);
@@ -1545,11 +1843,12 @@
       // Cones
       state.cones += ((state.conesOn ? 1 : 0) - state.cones) * Math.min(1, dt * 5);
       const coneOpacity = state.cones * CONFIG.cones.opacity;
-      [earthCone, moonCone].forEach((c) => {
+      shadowCones.forEach((c) => {
         c.visible = coneOpacity > 0.01;
-        c.material.uniforms.uOpacity.value = coneOpacity;
+        c.material.uniforms.uOpacity.value = coneOpacity * c.userData.strength;
       });
-      moonCone.position.set(moon.position.x + moonCone.userData.length / 2, 0, moon.position.z);
+      moonCone.position.set(moon.position.x + moonConeLength / 2, moon.position.y, moon.position.z);
+      moonPenumbra.position.copy(moonCone.position);
 
       // Red Moon: turns red slowly (about riseSeconds), comes back a bit faster.
       const want = Math.pow(moonShadowDepth(), 1.5);
@@ -1559,7 +1858,8 @@
       moon.material.color.copy(moonWhite).lerp(moonTint, state.redness);
       moon.material.emissiveIntensity = CONFIG.redMoon.emissiveIntensity * state.redness;
 
-      if (!redMoonAnnounced && state.redness > 0.9) { redMoonAnnounced = true; emit("redmoon", { on: true }); }
+      // (While the Moon travels by itself it still turns red, but nobody gets a pop-up or lesson credit for it.)
+      if (!redMoonAnnounced && state.redness > 0.9 && !autoplay.on) { redMoonAnnounced = true; emit("redmoon", { on: true }); }
       if (redMoonAnnounced && state.redness < 0.2) { redMoonAnnounced = false; emit("redmoon", { on: false }); }
     }
 
@@ -1593,6 +1893,86 @@
       lightRays.children.forEach((r) => { r.material.opacity = 0.55 * raysFade * shimmer; });
     }
 
+    /* --- 🌅 Sunset light (teaching aid): why the Moon turns red in Earth's shadow ---
+       Sunlight skims past the edge of Earth, through the thin blue layer of air. The air bounces the blue
+       light away in all directions (that is why the sky is blue) and bends the red and orange light that
+       is left into Earth's shadow, onto the Moon. The bend is drawn much bigger than it really is. */
+    const sunsetLight = new THREE.Group();
+    const sunsetParts = []; // { material, strength }
+    {
+      const R = CONFIG.earth.radius;
+      const part = (color, strength) => {
+        const material = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+        sunsetParts.push({ material, strength });
+        return material;
+      };
+      const sunlight = part(0xfff1a8, 0.6), redLight = part(0xff4a22, 0.9), blueLight = part(0x5fb0ff, 0.75);
+      const up = new THREE.Vector3(0, 1, 0), dir = new THREE.Vector3();
+      const beam = (from, to, radius, material) => {
+        dir.subVectors(to, from);
+        const m = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, dir.length(), 8, 1, true), material);
+        m.position.addVectors(from, to).multiplyScalar(0.5);
+        m.quaternion.setFromUnitVectors(up, dir.normalize());
+        sunsetLight.add(m);
+      };
+      const RAYS = 8;
+      for (let i = 0; i < RAYS; i++) {
+        const a = ((i + 0.5) / RAYS) * Math.PI * 2;
+        const out = new THREE.Vector3(0, Math.cos(a), Math.sin(a));        // straight out from Earth's edge
+        const edge = out.clone().multiplyScalar(R * 1.05);                // where the light skims through the air
+        // 1. White-yellow sunlight arrives in a straight line.
+        beam(edge.clone().setX(-9), edge, 0.05, sunlight);
+        // 2. The red part bends inward and lands on the Moon's path, behind Earth.
+        beam(edge, out.clone().multiplyScalar(0.55).setX(CONFIG.moon.orbitRadius), 0.06, redLight);
+        // 3. The blue part is bounced away in other directions.
+        beam(edge, edge.clone().add(out.clone().multiplyScalar(1.7).setX(1.1)), 0.035, blueLight);
+        beam(edge, edge.clone().add(out.clone().multiplyScalar(1.5).setX(-0.9)), 0.035, blueLight);
+      }
+      // Earth's air: a thin blue glow around the edge of the planet.
+      const air = new THREE.Mesh(
+        new THREE.SphereGeometry(R * 1.07, 48, 32),
+        new THREE.ShaderMaterial({
+          transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+          uniforms: { uOpacity: { value: 0 } },
+          vertexShader: `
+            varying vec3 vNormal;
+            varying vec3 vView;
+            void main() {
+              vec4 mv = modelViewMatrix * vec4(position, 1.0);
+              vNormal = normalize(normalMatrix * normal);
+              vView = normalize(-mv.xyz);
+              gl_Position = projectionMatrix * mv;
+            }`,
+          fragmentShader: `
+            uniform float uOpacity;
+            varying vec3 vNormal;
+            varying vec3 vView;
+            void main() {
+              float edge = pow(1.0 - abs(dot(normalize(vNormal), normalize(vView))), 2.5);
+              gl_FragColor = vec4(vec3(0.38, 0.66, 1.0), edge * uOpacity);
+            }`,
+        })
+      );
+      sunsetLight.add(air);
+      sunsetLight.userData.air = air;
+    }
+    sunsetLight.visible = false;
+    earthSystem.add(sunsetLight);
+    let sunsetOn = false, sunsetFade = 0;
+    function setSunsetLight(on) {
+      on = Boolean(on);
+      if (sunsetOn === on) return;
+      sunsetOn = on;
+      emit("sunsetlight", { on });
+    }
+    function updateSunsetLight(dt) {
+      sunsetFade += ((sunsetOn ? 1 : 0) - sunsetFade) * Math.min(1, dt * 4);
+      sunsetLight.visible = sunsetFade > 0.01;
+      if (!sunsetLight.visible) return;
+      sunsetParts.forEach((p) => { p.material.opacity = p.strength * sunsetFade; });
+      sunsetLight.userData.air.material.uniforms.uOpacity.value = 0.9 * sunsetFade;
+    }
+
     /** Stretch the beam from the Sun's edge to the far end of the line-up. */
     function shapeAlignGlow(type) {
       const startX = CONFIG.sun.position.x + CONFIG.sun.radius;
@@ -1605,13 +1985,17 @@
 
     /* =====================================================================
        INTERACTION
-       The child moves the Moon by dragging it (mouse or touch) or holding
-       the ◀ ▶ buttons / arrow keys. The Moon stays on its orbit. Close to a
-       perfect line-up it snaps into place, dings and the line-up glows.
+       The Moon travels around Earth by itself ("playing") until the child
+       pauses it. The child can also move the Moon by dragging it (mouse or
+       touch) or holding the ◀ ▶ buttons / arrow keys: that pauses it too, so
+       the Moon stays where the child put it. Close to a perfect line-up a
+       paused Moon snaps into place, dings and the line-up glows. A playing
+       Moon glides straight through line-ups with no snap.
        Other parts of the app listen with events.addEventListener(...):
          "alignment" → detail.type is "solar", "lunar" or null
          "near"      → detail.type is "solar", "lunar" or null
          "dragstart" / "dragend"
+         "autoplay"  → detail.on is true (playing) or false (paused)
        ===================================================================== */
     const TAU = Math.PI * 2;
     const LINEUPS = { solar: Math.PI, lunar: 0 };
@@ -1623,8 +2007,33 @@
     const events = new EventTarget();
     const emit = (name, detail = {}) => events.dispatchEvent(new CustomEvent(name, { detail }));
 
-    // Later steps switch this off (e.g. while "real sizes" is on).
     const interactionRules = { snapEnabled: true, moonEnabled: true };
+
+    // Playing by default (paused for people who asked their device for less motion).
+    const SPEED_KEY = "eclipse-explorer.moonSpeed";
+    const autoplay = { on: !CONFIG.reducedMotion, speed: "slow" };
+    try {
+      const saved = localStorage.getItem(SPEED_KEY);
+      if (CONFIG.autoplay.speedsDeg[saved]) autoplay.speed = saved;
+    } catch { /* storage blocked: slow it is */ }
+
+    /** Play or pause the Moon's trip. `moonTo` also moves the Moon to that angle (a fair start for a lesson task). */
+    function setAutoplay(on, { moonTo = null } = {}) {
+      on = Boolean(on);
+      if (autoplay.on === on && moonTo === null) return;
+      const changed = autoplay.on !== on;
+      autoplay.on = on;
+      state.rawAngle = moonTo === null ? state.moonAngle : wrapAngle(moonTo); // carry on from where the Moon is drawn
+      if (!on && changed) orbitTilt.settled = false; // the tilted path first turns to eclipse season (see updateMoon)
+      updateAlignment();   // playing lets go of a line-up; a Moon paused on a line-up snaps in once the path has turned
+      if (changed) emit("autoplay", { on });
+    }
+    function setMoonSpeed(speed) {
+      if (!CONFIG.autoplay.speedsDeg[speed]) return;
+      autoplay.speed = speed;
+      try { localStorage.setItem(SPEED_KEY, speed); } catch { /* fine */ }
+      emit("moonspeed", { speed });
+    }
 
     function nearestLineup(angle) {
       const solarOff = Math.abs(angleDiff(angle, LINEUPS.solar));
@@ -1635,11 +2044,13 @@
     function updateAlignment() {
       const cfg = CONFIG.interaction;
       const nearest = nearestLineup(state.rawAngle);
+      // A playing Moon never snaps, and a paused one only once its path crosses the Sun–Earth line.
+      const snapping = interactionRules.snapEnabled && !autoplay.on && (orbitTilt.settled || orbitTilt.amount === 0);
 
       let aligned = state.aligned;
       if (aligned && (aligned !== nearest.type || nearest.off > deg(cfg.releaseDeg))) aligned = null;
-      if (!aligned && interactionRules.snapEnabled && nearest.off < deg(cfg.snapDeg)) aligned = nearest.type;
-      if (!interactionRules.snapEnabled) aligned = null;
+      if (!aligned && snapping && nearest.off < deg(cfg.snapDeg)) aligned = nearest.type;
+      if (!snapping) aligned = null;
 
       if (aligned !== state.aligned) {
         state.aligned = aligned;
@@ -1647,7 +2058,7 @@
         emit("alignment", { type: aligned });
       }
 
-      const near = interactionRules.snapEnabled && !aligned && nearest.off < deg(cfg.nearDeg) ? nearest.type : null;
+      const near = snapping && !aligned && nearest.off < deg(cfg.nearDeg) ? nearest.type : null;
       if (near !== state.near) {
         state.near = near;
         emit("near", { type: near });
@@ -1680,13 +2091,29 @@
       aimRay(e);
       return raycaster.intersectObject(moonHit, false).length > 0;
     }
+    const viewDir = new THREE.Vector3(), orbitDot = new THREE.Vector3();
     function orbitAngleUnderPointer(e) {
       aimRay(e);
-      if (!raycaster.ray.intersectPlane(orbitPlane, planeHit)) return null;
-      const x = planeHit.x - CONFIG.earth.position.x;
-      const z = planeHit.z - CONFIG.earth.position.z;
-      if (x * x + z * z < 0.25) return null; // right on Earth's centre: direction is unclear
-      return Math.atan2(-z, x);              // matches placeMoon(): z = -sin(angle)
+      // Looking at the Moon's (tilted) path from above or below: where the pointer meets the flat plane of the path.
+      viewDir.subVectors(camera.position, controls.target).normalize();
+      if (Math.abs(viewDir.dot(orbitTilt.normal)) > 0.2) {
+        orbitPlane.setFromNormalAndCoplanarPoint(orbitTilt.normal, CONFIG.earth.position);
+        if (!raycaster.ray.intersectPlane(orbitPlane, planeHit)) return null;
+        planeHit.sub(CONFIG.earth.position).applyQuaternion(orbitTilt.unquat); // back to the un-tilted ring
+        if (planeHit.x * planeHit.x + planeHit.z * planeHit.z < 0.25) return null; // right on Earth's centre: direction is unclear
+        return Math.atan2(-planeHit.z, planeHit.x);                                // matches moonOffsetAt(): z = -sin(angle)
+      }
+      // Looking along the path's plane, that spot is far away and jumpy. Take the point of the path closest to
+      // the pointer instead. The near and far side overlap from here, so stay close to where the Moon already is.
+      let best = null, bestCost = Infinity;
+      for (let i = 0; i < 180; i++) {
+        const a = (i / 180) * TAU;
+        moonOffsetAt(a, orbitDot).add(CONFIG.earth.position);
+        const cost = Math.sqrt(raycaster.ray.distanceSqToPoint(orbitDot))
+          + 0.1 * sizes.orbitRadius * Math.abs(angleDiff(a, state.rawAngle));
+        if (cost < bestCost) { bestCost = cost; best = a; }
+      }
+      return best;
     }
 
     // Capture phase on window runs before OrbitControls' own listener on the canvas,
@@ -1697,6 +2124,7 @@
       if (!e.isPrimary || !interactionRules.moonEnabled || !pointerIsOnMoon(e)) return;
       e.stopPropagation();
       e.preventDefault();
+      setAutoplay(false); // the child has the Moon now
       dragPointerId = e.pointerId;
       state.dragging = true;
       canvas.style.cursor = "grabbing";
@@ -1751,6 +2179,7 @@
         e.preventDefault();
         try { button.setPointerCapture(e.pointerId); } catch { /* not a live pointer */ }
         button.classList.add("held");
+        setAutoplay(false);
         state.arrowDir = dir;
         setRawAngle(state.rawAngle + dir * deg(CONFIG.interaction.arrowNudgeDeg));
       });
@@ -1760,6 +2189,7 @@
       // Keyboard users: Enter/Space on the focused button gives one nudge.
       button.addEventListener("click", (e) => {
         if (e.detail === 0 && interactionRules.moonEnabled) {
+          setAutoplay(false);
           setRawAngle(state.rawAngle + dir * deg(CONFIG.interaction.arrowNudgeDeg * 2));
         }
       });
@@ -1774,6 +2204,7 @@
       const dir = e.key === "ArrowLeft" ? -1 : e.key === "ArrowRight" ? 1 : 0;
       if (!dir) return;
       e.preventDefault();
+      setAutoplay(false);
       if (!e.repeat) setRawAngle(state.rawAngle + dir * deg(CONFIG.interaction.arrowNudgeDeg)); // a quick press still moves
       state.arrowDir = dir;
     });
@@ -1784,10 +2215,48 @@
     });
     window.addEventListener("blur", () => { state.arrowDir = 0; });
 
-    /** Called every frame: arrows push the Moon, and the drawn Moon glides to its target. */
+    let tiltMoved = false;
+    /** Called every frame: the Moon travels by itself or arrows push it, and the drawn Moon glides to its target. */
     function updateMoon(dt) {
       if (state.arrowDir) {
         setRawAngle(state.rawAngle + state.arrowDir * deg(CONFIG.interaction.arrowSpeedDeg) * dt);
+      } else if (autoplay.on && !state.dragging && interactionRules.moonEnabled && !(ground.open && ground.type !== "live")) {
+        // Same way round as the real Moon (and the ▶ button). No "moonpush": lessons only count what the child does.
+        const step = deg(CONFIG.autoplay.speedsDeg[autoplay.speed]) * dt;
+        state.rawAngle = wrapAngle(state.rawAngle + step);
+        updateAlignment();
+        // Time is passing: the crossing line of the tilted path slowly turns the other way.
+        orbitTilt.node = wrapAngle(orbitTilt.node - step / CONFIG.moon.nodeLaps);
+        orbitTilt.settled = false;
+        tiltMoved = true;
+      }
+      // With the Moon in the child's hands, the path turns to the nearest "eclipse season", so lining
+      // the Moon up always makes an eclipse. (Left to itself, that only happens about every 6th lap.)
+      if (!autoplay.on && !orbitTilt.settled) {
+        const season = Math.round(orbitTilt.node / Math.PI) * Math.PI;
+        const left = season - orbitTilt.node;
+        if (Math.abs(left) < 0.002 || CONFIG.reducedMotion) {
+          orbitTilt.node = season;
+          orbitTilt.settled = true;
+        } else {
+          orbitTilt.node += left * (1 - Math.exp(-5 * dt));
+        }
+        tiltMoved = true;
+        if (orbitTilt.settled) updateAlignment(); // now a Moon resting on a line-up can snap into it
+      }
+      // ⚙️ "Tilted path" just flipped: glide between the flat and the tilted path.
+      const wantTilt = orbitTilt.on ? 1 : 0;
+      if (orbitTilt.amount !== wantTilt) {
+        const left = wantTilt - orbitTilt.amount;
+        orbitTilt.amount = Math.abs(left) < 0.003 || CONFIG.reducedMotion ? wantTilt : orbitTilt.amount + left * (1 - Math.exp(-5 * dt));
+        tiltMoved = true;
+        if (orbitTilt.amount === 0) updateAlignment(); // flat again: a Moon resting on a line-up snaps in
+      }
+      if (tiltMoved) {
+        tiltMoved = false;
+        refreshOrbitTilt();
+        orbitDots.quaternion.copy(orbitTilt.quat);
+        placeMoon(state.moonAngle);
       }
       const diff = angleDiff(state.targetAngle, state.moonAngle);
       if (Math.abs(diff) > 1e-4) {
@@ -1816,6 +2285,9 @@
        Guides.enqueue(lines)       → add to what's being said (or start)
        Guides.quick(guide, text)   → short bubble that disappears by itself
        Guides.hide()               → send the guide away
+       Guides.setQuiet(on)         → ✕ on a bubble turns quiet on: no bubble comes
+                                     back (only the Sun safety talk still shows)
+                                     until Learning mode is switched on again
        Guides.allowNext()          → show Next on a line that had next: false
 
        A line looks like:
@@ -1875,8 +2347,15 @@
       const nameEl = $("bubble-name"), textEl = $("bubble-text"), moreEl = $("bubble-more");
       const iconEl = $("bubble-icon"), actionsEl = $("bubble-actions"), extraEl = $("bubble-extra");
       const speakBtn = $("btn-speak"), moreBtn = $("btn-more"), nextBtn = $("btn-next");
-      const hideBtn = $("btn-hide-guide"), showBtn = $("btn-show-guide");
-      let minimized = false;   // bubble tucked away; the talk waits until the child brings it back
+      const hideBtn = $("btn-hide-guide");
+      // Quiet: the child closed the tutorial with ✕. Remembered, like the Learning mode switch.
+      const QUIET_KEY = "eclipse-explorer.guidesOff";
+      let quiet = false;
+      try { quiet = localStorage.getItem(QUIET_KEY) === "1"; } catch { /* storage blocked: fine */ }
+      function setQuiet(on) {
+        quiet = Boolean(on);
+        try { localStorage.setItem(QUIET_KEY, quiet ? "1" : "0"); } catch { /* fine */ }
+      }
       const cheerEl = $("bubble-cheer");
       let cheerTimer = null;
 
@@ -1986,7 +2465,6 @@
       function showCurrent() {
         const line = currentLine();
         if (!line) return;
-        if (minimized) { updateShowButton(true); return; }
         showGuide(line.guide, () => { renderLine(line); armAutoHide(); });
       }
 
@@ -2003,39 +2481,21 @@
         clearTimeout(autoTimer);
       });
 
-      function updateShowButton(hasNew = false) {
-        const line = currentLine();
-        if (!minimized || !line) { showBtn.hidden = true; showBtn.classList.remove("has-new"); return; }
-        const info = GUIDE_INFO[line.guide];
-        showBtn.textContent = line.guide === "proxima" ? "💬 Proxima" : "💬 Kai";
-        showBtn.setAttribute("aria-label", `Show ${info.name} again`);
-        showBtn.classList.toggle("side-left", info.side === "left");
-        showBtn.classList.toggle("side-right", info.side === "right");
-        if (hasNew) showBtn.classList.add("has-new");
-        showBtn.hidden = false;
-      }
-      function minimize() {
-        if (!seq) { hideDock(); return; }   // a quick bubble just goes away
-        if (seq.tag === "safety") return;
-        minimized = true;
+      /** ✕: the tutorial goes away and stays away, whatever the child does next. */
+      function closeTutorial() {
+        if (seq && seq.tag === "safety") return; // the Sun safety talk can't be closed
+        setQuiet(true);
+        clearTimeout(quickTimer);
+        if (seq) finish(false);
         hideDock();
-        updateShowButton();
-        emit("guideminimized", { tag: seq.tag });
+        emit("guidesclosed");
       }
-      function restore() {
-        minimized = false;
-        updateShowButton();
-        showCurrent();
-      }
-      hideBtn.addEventListener("click", minimize);
-      showBtn.addEventListener("click", restore);
+      hideBtn.addEventListener("click", closeTutorial);
 
       function finish(result) {
         const s = seq;
         seq = null;
         clearTimeout(autoTimer);
-        minimized = false;
-        updateShowButton();
         if (s) s.resolve(result);
         emit("guidedone", { tag: s && s.tag, finished: result });
       }
@@ -2068,9 +2528,9 @@
 
       return {
         say(lines, { tag = null, autoHideMs = 0 } = {}) {
+          if (quiet && tag !== "safety") return Promise.resolve(false); // tutorial closed with ✕
           clearTimeout(quickTimer);
           if (seq) finish(false);
-          minimized = false; // something new to say brings the guide back
           return new Promise((resolve) => {
             seq = { lines: [...lines], index: 0, resolve, tag, autoHideMs, touched: false };
             showCurrent();
@@ -2078,13 +2538,13 @@
         },
         enqueue(lines, opts = {}) {
           if (!seq) return this.say(lines, opts);
+          if (quiet) return Promise.resolve(false);
           seq.lines.push(...lines);
           if (opts.tag) seq.tag = opts.tag;
-          if (minimized) updateShowButton(true); // let the child know there's more
           return Promise.resolve(true);
         },
         quick(guide, text, ms = 2200) {
-          if (seq) return; // never interrupt a real explanation
+          if (seq || quiet) return; // never interrupt a real explanation, never come back after ✕
           clearTimeout(quickTimer);
           showGuide(guide, () => renderLine({ guide, text }, true));
           quickTimer = setTimeout(hideDock, ms);
@@ -2102,7 +2562,7 @@
         },
         /** A short extra line in the open bubble, e.g. "Almost! Keep going!" */
         cheer(text, ms = 2200) {
-          if (dock.hidden || minimized) return;
+          if (dock.hidden) return;
           clearTimeout(cheerTimer);
           cheerEl.textContent = text;
           cheerEl.hidden = false;
@@ -2111,8 +2571,8 @@
           cheerEl.style.animation = "";
           if (ms) cheerTimer = setTimeout(() => { cheerEl.hidden = true; }, ms);
         },
-        restore,
-        get minimized() { return minimized; },
+        setQuiet,
+        get quiet() { return quiet; },
         get busy() { return Boolean(seq); },
         get tag() { return seq ? seq.tag : null; },
       };
@@ -2129,7 +2589,8 @@
                    | "redMoon" | "groundSolar" | "groundLunar",
            optional: true,          // Next shows right away; the action is a bonus
            sceneEffect: null | "showShadowCones" | "hideShadowCones"
-                   | "showLightRays" | "hideLightRays" | "moonStart" | "resetView"
+                   | "showLightRays" | "hideLightRays" | "showSunsetLight" | "hideSunsetLight"
+                   | "moonStart" | "resetView"
                    (or a list of these),
            icon: "glasses", lockSeconds: 2 }
        A step with an action hides Next until the child has done it.
@@ -2224,6 +2685,7 @@
           { id: "lunar-red", guide: "proxima", text: "Look! The Moon turned red!",
             more: "The Moon doesn't go completely dark. A little sunlight still reaches the Moon." },
           { id: "lunar-why", guide: "proxima", text: "Earth's air bends some sunlight onto the Moon, like a sunset!",
+            sceneEffect: "showSunsetLight",
             more: "Air bounces blue light away and lets red light through. During a lunar eclipse, light from all the sunsets around Earth shines on the Moon!" },
           { id: "lunar-ground", guide: "kai", text: "Want to see the red Moon from Earth?", action: "groundLunar", optional: true,
             more: "A lunar eclipse is safe to look at with just your eyes. Tap Next to skip." },
@@ -2352,6 +2814,7 @@
         { guide: "proxima", text: "Earth's air bends some sunlight onto the Moon, like a sunset!",
           more: "Air bounces blue light away and lets red light through. That's why sunsets look red. During a lunar eclipse, light from all the sunsets around Earth shines on the Moon!" },
       ],
+      liveSafety: [], // filled in below: the solar safety talk with a live-view ending
       solarSafety: [
         { guide: "kai", icon: "glasses", lockSeconds: 2,
           text: "Never look at the Sun without special eclipse glasses!",
@@ -2364,12 +2827,12 @@
           more: "In real life, keep your eclipse glasses on the whole time you look up at the Sun." },
       ],
       solarTotal: [
-        { guide: "kai", text: "Wow! The sky got dark in the daytime, and the stars came out!",
+        { guide: "kai", text: "Wow! The sky got dark in the daytime, and bright stars and planets came out!",
           more: "The glowing ring is the corona, the Sun's super-hot outer air. Birds and animals often think evening has come and get ready for bed!" },
       ],
       freeStart: [
         { guide: "kai", text: "Free play! Move the Moon and make any eclipse you like.",
-          more: "Tap ⚙️ to turn on the shadow cones. When the Moon clicks into place, tap See it from Earth!" },
+          more: "Tap the 🌍 View from Earth picture to see the sky big. Tap ⚙️ to turn on the shadow cones." },
       ],
       freeSolar: [
         { guide: "kai", text: "Solar eclipse! The Moon is in the middle.",
@@ -2398,6 +2861,12 @@
     };
 
 
+    SCRIPTS.liveSafety = [
+      ...SCRIPTS.solarSafety.slice(0, 3),
+      { guide: "kai", text: "Okay! Now let's watch the sky.",
+        more: "In real life, keep your eclipse glasses on the whole time you look up at the Sun." },
+    ];
+
     /* ---------- Lesson engine ---------- */
     const lesson = {
       active: false,
@@ -2414,7 +2883,6 @@
     const freePlay = { active: false, unlocked: false };
 
     const progressEl = document.getElementById("progress");
-    const dotsEl = document.getElementById("progress-dots");
     const titleEl = document.getElementById("progress-title");
     const chipEl = document.getElementById("task-chip");
     const labelsEl = document.getElementById("fact-labels");
@@ -2528,14 +2996,19 @@
     const currentStep = () => LESSONS[lesson.chapter].steps[lesson.step];
     const freePlayIndex = () => LESSONS.findIndex((c) => c.freePlay);
 
+    const MOON_START = Math.PI / 2;
+    const MOON_TASKS = new Set(["orbitOnce", "alignSolar", "alignLunar"]);
+
     function applyEffects(effects) {
       [].concat(effects || []).forEach((fx) => {
         if (fx === "showShadowCones") setShadowCones(true);
         else if (fx === "hideShadowCones") setShadowCones(false);
         else if (fx === "showLightRays") setLightRays(true);
         else if (fx === "hideLightRays") setLightRays(false);
+        else if (fx === "showSunsetLight") setSunsetLight(true);
+        else if (fx === "hideSunsetLight") setSunsetLight(false);
         else if (fx === "resetView") resetView();
-        else if (fx === "moonStart") setRawAngle(Math.PI / 2); // behind Earth (top of the screen), 90° from both line-ups
+        else if (fx === "moonStart") setRawAngle(MOON_START); // behind Earth (top of the screen), 90° from both line-ups
       });
     }
 
@@ -2547,31 +3020,10 @@
     }
 
     function renderProgress() {
-      dotsEl.replaceChildren(...LESSONS.map((c, i) => {
-        const li = document.createElement("li");
-        const b = document.createElement("button");
-        b.type = "button";
-        b.className = "chapter-dot";
-        b.textContent = c.icon;
-        const done = lesson.completed.has(i);
-        const current = c.freePlay ? freePlay.active : lesson.active && i === lesson.chapter;
-        b.classList.toggle("done", done);
-        b.classList.toggle("current", current);
-        // You can go back to any chapter you finished (or restart the one you're in).
-        // Free play opens once the quiz is done.
-        const locked = c.freePlay ? !freePlay.unlocked : !(done || current);
-        b.disabled = locked;
-        b.setAttribute("aria-label", `${c.freePlay ? "" : `Chapter ${i + 1}: `}${c.title}${locked ? " (locked)" : done ? " (done)" : ""}`);
-        if (current) b.setAttribute("aria-current", "step");
-        b.title = b.getAttribute("aria-label");
-        b.addEventListener("click", () => startChapter(i));
-        li.appendChild(b);
-        return li;
-      }));
       const c = LESSONS[lesson.chapter];
       titleEl.textContent = lesson.active ? `${lesson.chapter + 1} · ${c.title}`
         : freePlay.active ? "🎉 Free play" : "You finished the lessons! 🎉";
-      progressEl.hidden = !learning.on; // no chapter bar while exploring freely
+      progressEl.hidden = !learning.on; // no chapter title while exploring freely
       startOverBtn.hidden = !(lesson.completed.size > 0 || freePlay.unlocked);
     }
 
@@ -2642,6 +3094,11 @@
       const key = `${lesson.chapter}.${lesson.step}`;
       if (lesson.stepKey !== key) {           // a fresh step (not just showing the same one again)
         lesson.stepKey = key;
+        // Your turn: the Moon stops travelling by itself and waits for the child. For a line-up task it
+        // waits at the start spot, so it can't happen to stop right on the answer.
+        if (autoplay.on && MOON_TASKS.has(step.action)) {
+          setAutoplay(false, { moonTo: step.action === "orbitOnce" ? null : MOON_START });
+        }
         lesson.done = isActionAlreadyDone(step.action);
         lesson.taps = new Set();
         lesson.travel = 0;
@@ -2684,8 +3141,9 @@
     function startChapter(i) {
       const c = LESSONS[i];
       if (!c || ground.open) return;
-      if (!learning.on) { learning.on = true; saveLearning(); refreshLearningUI(); }
       if (realScale.on) setRealScale(false, { resume: false }); // lessons use the friendly view
+      Guides.setQuiet(false); // starting a chapter brings the guides back
+      if (!learning.on) { learning.on = true; saveLearning(); refreshLearningUI(); }
       if (c.freePlay) { startFreePlay(); return; }
       freePlay.active = false;
       lesson.active = true;
@@ -2695,6 +3153,7 @@
       lesson.stepKey = null;
       clearFacts();
       applyEffects(c.setup);
+      setSunsetLight(false); // like the cones and rays, every chapter starts without the helper drawings
       renderProgress();
       emit("chapterstart", { chapter: i, id: c.id });
       saveProgress();
@@ -2784,9 +3243,20 @@
       learning.on = on;
       saveLearning();
       refreshLearningUI();
+      Guides.setQuiet(false); // flipping the switch either way brings the guides back
       if (on) resumeLearning(); else enterExplore();
       emit("learningmode", { on });
     }
+    // ✕ on a speech bubble closes the tutorial: lessons switch off without a goodbye bubble,
+    // and stay off (also after a reload) until Learning mode is switched on again in ⚙️.
+    events.addEventListener("guidesclosed", () => {
+      if (!learning.on) return;
+      learning.on = false;
+      saveLearning();
+      refreshLearningUI();
+      enterExplore({ greet: false });
+      emit("learningmode", { on: false });
+    });
     learningBtn.addEventListener("click", () => setLearningMode(!learning.on));
     refreshLearningUI(); // the switch shows the saved choice right away
 
@@ -2866,12 +3336,8 @@
       const script = freePlay.active
         ? (type === "solar" ? SCRIPTS.freeSolar : SCRIPTS.freeLunar)
         : (type === "solar" ? SCRIPTS.alignSolar : SCRIPTS.alignLunar);
-      const lines = script.map((l) => ({
-        ...l,
-        actions: [{ label: "See it from Earth! 🌍", onClick: () => openGroundView(type) }],
-      }));
       // In free play the guide only pops up briefly (stays if the child touches the bubble).
-      Guides.say(lines, { tag: `align-${type}`, autoHideMs: freePlay.active ? 8000 : 0 });
+      Guides.say(script, { tag: `align-${type}`, autoHideMs: freePlay.active ? 8000 : 0 });
     });
     events.addEventListener("redmoon", (e) => {
       if (!reactions.enabled || !e.detail.on || ground.open) return;
@@ -3009,15 +3475,38 @@
       showSoundState();
     });
 
+    // --- ▶ / ⏸ between the Moon arrows, and the 🐢 🚲 🚀 Moon speed in ⚙️ ---
+    const playBtn = document.getElementById("btn-play");
+    function showPlayState() {
+      playBtn.classList.toggle("playing", autoplay.on);
+      document.getElementById("play-label").textContent = autoplay.on ? "Pause" : "Play";
+      playBtn.setAttribute("aria-label", autoplay.on ? "Pause the Moon" : "Play: let the Moon travel");
+    }
+    playBtn.addEventListener("click", () => setAutoplay(!autoplay.on));
+    events.addEventListener("autoplay", showPlayState);
+    showPlayState();
+
+    const speedBtns = [...document.querySelectorAll(".speed-choices button")];
+    function showSpeedState() {
+      speedBtns.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.speed === autoplay.speed)));
+    }
+    speedBtns.forEach((b) => b.addEventListener("click", () => {
+      setMoonSpeed(b.dataset.speed);
+      setAutoplay(true); // picking a speed starts the Moon, so the change shows right away
+    }));
+    events.addEventListener("moonspeed", showSpeedState);
+    showSpeedState();
+
+    const lerp = THREE.MathUtils.lerp;
+
     /* ---------- "See the real sizes!" ----------
        Smoothly switches to true relative sizes and distances: Earth shrinks to a
        small ball, the Moon to a tiny dot 60 Earth-radii away, and the Sun grows
        into a giant glowing edge at the side (its distance is squeezed to fit).
        Snapping and lessons pause until the friendly view comes back. */
-    const realScale = { on: false, mix: 0, conesBefore: false, raysBefore: false };
+    const realScale = { on: false, mix: 0, conesBefore: false, raysBefore: false, sunsetBefore: false };
     const scaleBtn = document.getElementById("btn-scale");
     const sunFarLabel = document.getElementById("sun-far-label");
-    const lerp = THREE.MathUtils.lerp;
     const smoothMix = (t) => t * t * (3 - 2 * t);
     const NORMAL_TARGET_X = CONFIG.camera.target.x;
 
@@ -3045,6 +3534,10 @@
       cam.near = Math.max(0.5, d - sizes.orbitRadius - 2);
       cam.far = d + sizes.orbitRadius + 2;
       cam.updateProjectionMatrix();
+      // The Moon's shadow painted on Earth shrinks with the Moon (real umbra ≈ a dot, penumbra ≈ 2 Moon-widths).
+      moonShadowUniforms.uMoonShadow.value.set(
+        lerp(CONFIG.moonShadow.umbraRadius, R.moonRadius * 0.15, m),
+        lerp(CONFIG.moonShadow.penumbraRadius, R.moonRadius * 2.2, m));
     }
 
     function updateRealScale(dt) {
@@ -3065,12 +3558,16 @@
       if (on) {
         realScale.conesBefore = state.conesOn;
         realScale.raysBefore = raysOn;
+        realScale.sunsetBefore = sunsetOn;
         setShadowCones(false);
         setLightRays(false);
+        setSunsetLight(false);       // the sunset-light drawing is made for the friendly sizes
       } else {
         if (realScale.conesBefore) setShadowCones(true);
         if (realScale.raysBefore) setLightRays(true);
+        if (realScale.sunsetBefore) setSunsetLight(true);
       }
+      sunsetBtn.disabled = on;
       updateAlignment(); // let go of any snapped line-up
       conesBtn.disabled = on;
       scaleBtn.setAttribute("aria-pressed", String(on));
@@ -3109,16 +3606,38 @@
     conesBtn.addEventListener("click", () => setShadowCones(!state.conesOn));
     events.addEventListener("cones", (e) => conesBtn.setAttribute("aria-pressed", String(e.detail.on)));
 
+    // --- 🪐 Tilted path toggle (remembered; off by default) ---
+    const tiltBtn = document.getElementById("btn-tilt");
+    function showTiltState() {
+      tiltBtn.setAttribute("aria-pressed", String(orbitTilt.on));
+      document.getElementById("tilt-sub").textContent = orbitTilt.on
+        ? "On: eclipses only on some laps, like the real Moon" : "Off: an eclipse on every lap";
+    }
+    tiltBtn.addEventListener("click", () => setOrbitTilt(!orbitTilt.on));
+    events.addEventListener("orbittilt", showTiltState);
+    showTiltState();
+
+    // --- 🌅 Sunset light toggle ---
+    const sunsetBtn = document.getElementById("btn-sunset");
+    sunsetBtn.addEventListener("click", () => setSunsetLight(!sunsetOn));
+    events.addEventListener("sunsetlight", (e) => sunsetBtn.setAttribute("aria-pressed", String(e.detail.on)));
+
     /* ---------- Ground view ----------
        What people standing on Earth see. Solar: the Moon's dark disc slides over
-       the Sun, the sky turns to dusk, stars come out, the corona glows. Lunar: at
+       the Sun (the Moon can't be seen in the bright daytime sky, only where it
+       covers the Sun), the sky turns to dusk, stars come out, the corona glows. Lunar: at
        night, Earth's shadow slides over the full Moon and it turns coppery red.
        Events: "groundview" { type, open }, "groundphase" { type, phase }
-       phases: "safety" (Kai's safety talk) → "playing" → "total" → "done" */
+       phases: "safety" (Kai's safety talk) → "playing" → "total" → "done"
+       Tapping the small 🌍 frame opens it. With the Moon snapped into a line-up it plays that eclipse
+       (type "solar" / "lunar"). Otherwise it opens "live": the small frame's picture, full screen,
+       still following the Moon as it travels. */
     const GROUND = {
       sun:  { x: 900, y: 250, r: 90 },
       moon: { x: 900, y: 240, r: 80 },   // lunar view
-      umbraR: 210,                       // Earth's shadow is much wider than the Moon
+      umbraR: 210,                       // Earth's dark inner shadow is about 2.6 times as wide as the Moon
+      umbraEdge: 0.57,                   // where the umbra ends inside the shadow gradient (the rest is penumbra)
+      moonSize: 1.04,                    // in a total solar eclipse the Moon looks a little bigger than the Sun
       timing: { in: 4.5, hold: 3.5, out: 4 },
       sky: {
         day:   ["#3aa0ff", "#8fd0ff", "#d6f1ff"],
@@ -3135,7 +3654,8 @@
     };
     const groundEl = document.getElementById("ground");
     const $g = (id) => document.getElementById(id);
-    const ground = { open: false, type: null, phase: "idle", t: 0, totalAnnounced: false };
+    const ground = { open: false, type: null, phase: "idle", t: 0, totalAnnounced: false,
+                     liveNight: 1, liveSafetyDone: false, resumePlay: false };
     let groundCoveredAt = Infinity; // when the ground view fully covers the 3D scene
 
     // Stars for the ground sky (fixed pattern)
@@ -3159,11 +3679,49 @@
     }
     const smooth = (e0, e1, x) => { const t = THREE.MathUtils.clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
 
-    /** Fraction of a circle (radius r) covered by another circle of the same size, centres d apart. */
-    function equalDiscOverlap(d, r) {
-      if (d >= 2 * r) return 0;
-      const a = 2 * r * r * Math.acos(d / (2 * r)) - (d / 2) * Math.sqrt(4 * r * r - d * d);
-      return a / (Math.PI * r * r);
+    /** Fraction of a disc (radius rs) hidden by another disc (radius rm) whose centre is d away. */
+    function discCover(d, rs, rm) {
+      if (d >= rs + rm) return 0;
+      if (d <= Math.abs(rm - rs)) return rm >= rs ? 1 : (rm * rm) / (rs * rs);
+      const a = rs * rs * Math.acos((d * d + rs * rs - rm * rm) / (2 * d * rs))
+        + rm * rm * Math.acos((d * d + rm * rm - rs * rs) / (2 * d * rm))
+        - 0.5 * Math.sqrt((-d + rs + rm) * (d + rs - rm) * (d - rs + rm) * (d + rs + rm));
+      return a / (Math.PI * rs * rs);
+    }
+
+    /** How the daytime sky looks when the Moon's centre is d away from the Sun's centre (Sun radius rs, Moon rm). */
+    function solarLook(d, rs, rm) {
+      const coverage = discCover(d, rs, rm);
+      const sliver = d - (rm - rs);                                    // how much Sun still peeks out (≤ 0: totality)
+      const total = sliver <= 0;
+      const lastMoments = 1 - smooth(0, 0.16 * rs, Math.max(0, sliver)); // 0 → 1 as the last sliver shrinks away
+      return {
+        coverage, total,
+        dark: smooth(0.7, 1, coverage),               // daylight looks normal until most of the Sun is hidden
+        corona: lastMoments,                          // the corona appears together with the diamond ring
+        diamond: total ? 0 : lastMoments,             // the last (or first) sparkle of sunlight; gone in totality
+        glow: 1 - 0.95 * smooth(0.6, 1, coverage),
+        planets: smooth(0.9, 1, coverage),            // bright planets and only the brightest stars:
+        stars: 0.3 * smooth(0.92, 1, coverage),       // totality is as dark as twilight, not as dark as night
+      };
+    }
+
+    /** Where the Moon is for the two sky pictures. `toward`: +1 = straight behind Earth (full Moon), −1 = straight
+        toward the Sun (new Moon). `side` / `up`: how far it sits from the Sun–Earth line (the tilted path carries
+        it above and below). `off` is that distance, `sx` / `sy` its direction. */
+    function moonInSky() {
+      const p = moon.position, side = -p.z, up = p.y, off = Math.hypot(side, up);
+      return { toward: p.x / sizes.orbitRadius, side, up, off, sx: off ? side / off : 0, sy: off ? up / off : 0 };
+    }
+
+    /** How far apart the Moon and Sun look (in Sun radii, signed) for people in the middle of Earth's sunny side,
+        when the Moon sits `lateral` away from the Sun–Earth line. Tied to the shadow in the space view: the discs
+        first touch as the faint outer shadow reaches those people, and totality is while the dark spot covers them. */
+    function sunMoonGap(lateral) {
+      const U = CONFIG.moonShadow.umbraRadius, P = CONFIG.moonShadow.penumbraRadius, m = GROUND.moonSize;
+      const L = Math.abs(lateral);
+      const gap = L <= U ? (L / U) * (m - 1) : (m - 1) + ((L - U) / (P - U)) * 2;
+      return Math.sign(lateral) * gap;
     }
 
     /** Offset of the moving disc over time: slide in, hold in the middle, slide out. */
@@ -3258,37 +3816,101 @@
       ["top", "mid", "bottom"].forEach((k, i) => $g(`g-sky-${k}`).setAttribute("stop-color", mixHex(from[i], to[i], t)));
     }
 
+    /** Draw the daytime sky with the Moon's centre at (mx, my). Returns solarLook(). */
+    function drawSolarSky(mx, my) {
+      const S = GROUND.sun, d = Math.hypot(mx - S.x, my - S.y);
+      const look = solarLook(d, S.r, S.r * GROUND.moonSize);
+      $g("smoon-disc").setAttribute("cx", mx.toFixed(1));
+      $g("smoon-disc").setAttribute("cy", my.toFixed(1));
+      // In daylight the Moon only shows on the Sun. In totality the whole black Moon stands out against the corona.
+      $g("clip-sun-circle").setAttribute("r", (S.r + 1.5 + 3 * look.corona).toFixed(1));
+      $g("sun-corona").setAttribute("opacity", look.corona.toFixed(3));
+      $g("sun-glow").setAttribute("opacity", look.glow.toFixed(3));
+      $g("ground-planets").setAttribute("opacity", look.planets.toFixed(3));
+      $g("sun-diamond").setAttribute("opacity", look.diamond.toFixed(3));
+      if (look.diamond > 0.005 && d > 0) {
+        // The sparkle sits on the Sun's edge, on the side the Moon has not covered yet.
+        const ux = (S.x - mx) / d, uy = (S.y - my) / d;
+        $g("sun-diamond").setAttribute("transform",
+          `translate(${(S.x + ux * S.r).toFixed(1)} ${(S.y + uy * S.r).toFixed(1)}) rotate(${(Math.atan2(uy, ux) * 180 / Math.PI).toFixed(1)})`);
+      }
+      return look;
+    }
+
+    /** Draw Earth's shadow on the Moon: shadow centre at (ux, uy) from the Moon's centre, `red` = 0..1 copper glow. */
+    function drawLunarSky(ux, uy, umbraR, red) {
+      const M = GROUND.moon;
+      $g("lmoon-umbra").setAttribute("cx", (M.x + ux).toFixed(1));
+      $g("lmoon-umbra").setAttribute("cy", (M.y + uy).toFixed(1));
+      $g("lmoon-umbra").setAttribute("r", (umbraR / GROUND.umbraEdge).toFixed(1));
+      $g("lmoon-red").setAttribute("opacity", red.toFixed(3));
+      $g("lmoon-redhalo").setAttribute("opacity", (0.14 * red).toFixed(3)); // barely a glow: a red Moon is dim, it doesn't shine
+      // More sunlight is bent into the outer part of the shadow, so the side of the Moon nearest the
+      // shadow's edge is brighter and more orange; right in the middle the Moon is an even, deep red.
+      const off = Math.hypot(ux, uy);
+      const nearEdge = THREE.MathUtils.clamp(off / Math.max(1, umbraR - M.r), 0, 1);
+      $g("lmoon-rim").setAttribute("cx", (M.x - (off ? ux / off : 0) * M.r * 0.8).toFixed(1));
+      $g("lmoon-rim").setAttribute("cy", (M.y - (off ? uy / off : 0) * M.r * 0.8).toFixed(1));
+      $g("lmoon-rim").setAttribute("opacity", (red * smooth(0.2, 1, nearEdge)).toFixed(3));
+    }
+
+    /** Live full-screen sky: the small frame's picture, big. Same maths as updateEarthFrame(), so the two always agree. */
+    function renderGroundLive() {
+      const S = GROUND.sun, M = GROUND.moon, sky = moonInSky();
+      const farSide = sky.toward > 0;
+      const night = smooth(-0.17, 0.17, sky.toward);
+      ground.liveNight = night; // the safety talk starts as soon as the Sun is up (see liveSafetyCheck)
+
+      // Day: the Sun, and the Moon only where it covers the Sun. (Up in space is up in the sky.)
+      const gap = farSide ? 6 : Math.min(6, sunMoonGap(sky.off));
+      const look = drawSolarSky(S.x + sky.sx * gap * S.r, S.y - sky.sy * gap * S.r);
+      $g("solar-sky").setAttribute("opacity", (1 - night).toFixed(3));
+
+      // Night: the Moon with its unlit part dark, Earth's shadow sliding over it, and the same red as in space.
+      const { x, y, r } = M;
+      const lit = Math.max(0, sky.toward);
+      const rx = (r * lit).toFixed(2), o = sky.side < 0 ? 0 : 1; // unlit on the left or the right
+      $g("lmoon-dark").setAttribute("d", `M${x} ${y - r}A${r} ${r} 0 0 ${o} ${x} ${y + r}A${rx} ${r} 0 0 ${1 - o} ${x} ${y - r}Z`);
+      const umbraR = (sizes.earthRadius / sizes.moonRadius) * r;
+      // Earth's shadow stays on the Sun–Earth line, so a Moon above the line sees the shadow below it.
+      const toSky = r / sizes.moonRadius, far = 1300;
+      const ux = farSide ? THREE.MathUtils.clamp(sky.side * toSky, -far, far) : far;
+      const uy = farSide ? THREE.MathUtils.clamp(sky.up * toSky, -far, far) : 0;
+      drawLunarSky(ux, uy, umbraR, farSide ? state.redness : 0);
+      $g("lmoon-halo").setAttribute("opacity", ((0.5 + 0.5 * lit) * (1 - 0.9 * moonShadowDepth())).toFixed(3));
+      $g("lunar-sky").setAttribute("opacity", night.toFixed(3));
+
+      ["top", "mid", "bottom"].forEach((k, i) => $g(`g-sky-${k}`).setAttribute("stop-color", frameSky(i, look.dark, night)));
+      paintLand(Math.max(look.dark, night));
+      $g("ground-stars").setAttribute("opacity", Math.max(night, look.stars).toFixed(3));
+      groundEl.style.background = frameSky(0, look.dark, night);
+      $g("ground-sun-tip").hidden = night > 0.5; // the reminder shows whenever the Sun is in the sky
+      return false;
+    }
+
     function renderGround() {
+      if (ground.type === "live") return renderGroundLive();
       const t = ground.t;
       if (ground.type === "solar") {
         const S = GROUND.sun;
-        const dx = slideOffset(t, S.r * 3.4);
-        const mx = S.x + dx, my = S.y + dx * 0.12;
-        $g("smoon-disc").setAttribute("cx", mx.toFixed(1));
-        $g("smoon-disc").setAttribute("cy", my.toFixed(1));
-        const coverage = equalDiscOverlap(Math.hypot(mx - S.x, my - S.y), S.r);
-        // A new Moon is hard to see in daytime: faint while far away, solid once it bites the Sun.
-        const nearSun = smooth(S.r * 3.2, S.r * 2, Math.hypot(mx - S.x, my - S.y));
-        $g("smoon-disc").setAttribute("opacity", (0.3 + 0.7 * nearSun).toFixed(3));
-        const dark = smooth(0.55, 1, coverage);           // the sky stays bright until the Sun is almost gone
-        paintSky(GROUND.sky.day, GROUND.sky.dusk, dark);
-        paintLand(dark);
-        $g("ground-stars").setAttribute("opacity", smooth(0.85, 1, coverage).toFixed(3));
-        $g("sun-corona").setAttribute("opacity", smooth(0.95, 0.999, coverage).toFixed(3));
-        $g("sun-glow").setAttribute("opacity", (1 - 0.95 * smooth(0.6, 1, coverage)).toFixed(3));
-        groundEl.style.background = mixHex(GROUND.sky.day[0], GROUND.sky.dusk[0], dark);
-        return coverage > 0.995;
+        // The Moon crosses from right to left, the same way it travels in the space view and the small frame.
+        const dx = -slideOffset(t, S.r * 3.4);
+        const look = drawSolarSky(S.x + dx, S.y - dx * 0.12);
+        paintSky(GROUND.sky.day, GROUND.sky.dusk, look.dark);
+        paintLand(look.dark);
+        $g("ground-stars").setAttribute("opacity", look.stars.toFixed(3));
+        groundEl.style.background = mixHex(GROUND.sky.day[0], GROUND.sky.dusk[0], look.dark);
+        return look.total;
       } else {
         const M = GROUND.moon, R = GROUND.umbraR;
         const dx = slideOffset(t, R + M.r + 60);
-        $g("lmoon-umbra").setAttribute("cx", (M.x + dx).toFixed(1));
-        $g("lmoon-umbra").setAttribute("cy", (M.y + dx * 0.1).toFixed(1));
         const dist = Math.hypot(dx, dx * 0.1);
-        const red = smooth(R - M.r + 40, R - M.r, dist);   // fully inside Earth's shadow → copper red
+        // Inside the umbra the Moon first looks almost black next to its bright part; the copper red
+        // shows once the whole Moon is in the shadow.
+        const red = smooth(R - M.r + 40, R - M.r, dist);
         const covered = smooth(R + M.r, R - M.r, dist);
-        $g("lmoon-red").setAttribute("opacity", red.toFixed(3));
+        drawLunarSky(dx, dx * 0.1, R, red);
         $g("lmoon-halo").setAttribute("opacity", (1 - 0.9 * covered).toFixed(3));
-        $g("lmoon-redhalo").setAttribute("opacity", red.toFixed(3));
         paintSky(GROUND.sky.night, GROUND.sky.night, 0);
         paintLand(1);
         $g("ground-stars").setAttribute("opacity", (0.75 + 0.25 * covered).toFixed(3));
@@ -3315,17 +3937,31 @@
       ground.open = true;
       ground.type = type;
       ground.t = 0;
-      $g("solar-sky").style.display = type === "solar" ? "" : "none";
-      $g("lunar-sky").style.display = type === "lunar" ? "" : "none";
+      ground.liveSafetyDone = false;
+      ground.liveNight = 1;
+      const live = type === "live";
+      $g("solar-sky").style.display = type === "lunar" ? "none" : "";
+      $g("lunar-sky").style.display = type === "solar" ? "none" : "";
+      // The eclipse shows start from a clean sky (the live view moves these around).
+      $g("solar-sky").setAttribute("opacity", 1);
+      $g("lunar-sky").setAttribute("opacity", 1);
+      $g("lmoon-dark").setAttribute("d", "");
+      $g("ground-planets").setAttribute("opacity", 0);
+      $g("sun-diamond").setAttribute("opacity", 0);
+      $g("ground-sun-tip").hidden = true;
       renderGround();
       document.body.classList.add("ground-open");
       groundEl.classList.add("open");
       groundCoveredAt = performance.now() + (CONFIG.reducedMotion ? 0 : 550); // after the fade-in
       groundEl.setAttribute("aria-hidden", "false");
-      refreshGroundButton();
       emit("groundview", { type, open: true });
 
-      if (type === "solar") {
+      if (live) {
+        $g("ground-top").hidden = false;
+        Guides.hide();
+        setGroundPhase("live");
+        liveSafetyCheck(); // daytime right away? then the safety talk comes first
+      } else if (type === "solar") {
         // Safety first: Kai's warning (its Next is locked for 2 seconds), and the
         // eclipse only plays once the child has gone through the whole safety talk.
         $g("ground-top").hidden = true;
@@ -3349,12 +3985,30 @@
       groundEl.setAttribute("aria-hidden", "true");
       Guides.hide();
       clock.getDelta(); // don't let the 3D scene jump after a long pause
-      refreshGroundButton();
       emit("groundview", { type: ground.type, open: false });
     }
 
     /** Called every frame while the ground view is open. */
+    /* Safety first in the live view too: the moment the Sun is in the sky, the Moon pauses and
+       Kai gives the same locked safety talk as the eclipse show (Next locked for 2 s, Back to space
+       hidden, can't be closed with ✕). It runs once each time the live view opens. */
+    function liveSafetyCheck() {
+      if (ground.phase !== "live" || ground.liveSafetyDone || ground.liveNight > 0.5) return;
+      ground.liveSafetyDone = true;
+      ground.resumePlay = autoplay.on;
+      setAutoplay(false);                 // no eclipse can sneak past while Kai is talking
+      $g("ground-top").hidden = true;
+      setGroundPhase("safety");
+      Guides.say(SCRIPTS.liveSafety, { tag: "safety" }).then(() => {
+        if (!ground.open || ground.type !== "live") return;
+        $g("ground-top").hidden = false;
+        setGroundPhase("live");
+        if (ground.resumePlay) setAutoplay(true);
+      });
+    }
+
     function updateGround(dt) {
+      if (ground.type === "live") { renderGround(); liveSafetyCheck(); return; }
       if (ground.phase !== "playing" && ground.phase !== "total") return;
       ground.t = Math.min(groundDuration(), ground.t + dt);
       const total = renderGround();
@@ -3366,30 +4020,157 @@
     $g("btn-replay").addEventListener("click", startGroundAnimation);
     window.addEventListener("keydown", (e) => { if (e.key === "Escape") closeGroundView(); });
 
-    // "See it from Earth!" appears once the Moon is snapped into a line-up.
-    const groundBtn = $g("btn-ground");
-    function refreshGroundButton() {
-      groundBtn.hidden = !(state.aligned && !ground.open && groundButtonEnabled);
+    /* ---------- 🌍 View-from-Earth frame ----------
+       A small live picture of the sky, always showing what the space view shows:
+       - Moon on the Sun's side → daytime, looking at the Sun. The Moon is invisible in the bright sky
+         and only shows where it covers the Sun (a solar eclipse begins when its shadow reaches Earth).
+       - Moon on the far side → night, looking at the Moon with its sunny part lit (half → full).
+         Earth's shadow slides over it and it turns red exactly like the Moon in space.
+       Tapping it opens the view full screen: the eclipse show if the Moon is snapped into a line-up,
+       otherwise the same live picture, big.
+       ⚙️ → "View from Earth" shows or hides it (remembered). */
+    const FRAME_KEY = "eclipse-explorer.earthFrame";
+    const EF = { cx: 120, cy: 56, r: 24, land: ["#6fcf7a", "#1b2445"] };
+    const earthFrame = { el: $g("earth-frame"), on: true, key: "", status: "" };
+    try { earthFrame.on = localStorage.getItem(FRAME_KEY) !== "0"; } catch { /* storage blocked: fine */ }
+    const frameBtn = $g("btn-earth-frame");
+    function setEarthFrame(on) {
+      earthFrame.on = Boolean(on);
+      earthFrame.el.hidden = !earthFrame.on;
+      earthFrame.key = ""; // draw it fresh when it comes back
+      frameBtn.setAttribute("aria-pressed", String(earthFrame.on));
+      try { localStorage.setItem(FRAME_KEY, earthFrame.on ? "1" : "0"); } catch { /* fine */ }
+      emit("earthframe", { on: earthFrame.on });
     }
-    let groundButtonEnabled = true; // lessons can switch this off
-    groundBtn.addEventListener("click", () => { if (state.aligned) openGroundView(state.aligned); });
-    events.addEventListener("alignment", refreshGroundButton);
+    frameBtn.addEventListener("click", () => setEarthFrame(!earthFrame.on));
+    earthFrame.el.addEventListener("click", () => openGroundView(state.aligned || "live"));
+    setEarthFrame(earthFrame.on);
+    {
+      const rand = seededRandom(31);
+      for (let i = 0; i < 26; i++) {
+        const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        c.setAttribute("cx", (rand() * 240).toFixed(0));
+        c.setAttribute("cy", (rand() * 100).toFixed(0));
+        c.setAttribute("r", (0.5 + rand() * 0.9).toFixed(1));
+        c.setAttribute("fill", "#ffffff");
+        $g("ef-stars").appendChild(c);
+      }
+    }
+    /** Blend day → dusk (eclipse) → night for one sky colour. */
+    function frameSky(i, dark, night) {
+      const S = GROUND.sky, day = hexToRgb(S.day[i]), dusk = hexToRgb(S.dusk[i]), nite = hexToRgb(S.night[i]);
+      return `rgb(${day.map((v, k) => Math.round(lerp(lerp(v, dusk[k], dark), nite[k], night))).join(",")})`;
+    }
+    function updateEarthFrame() {
+      if (!earthFrame.on || ground.open) return;
+      const key = `${state.moonAngle.toFixed(4)}|${state.redness.toFixed(3)}|${orbitTilt.node.toFixed(4)}|${orbitTilt.amount.toFixed(3)}`;
+      if (key === earthFrame.key) return; // nothing moved: leave the picture alone
+      earthFrame.key = key;
+      const { cx, cy, r } = EF, sky = moonInSky();
+      const farSide = sky.toward > 0;                       // Moon behind Earth, away from the Sun
+      const night = smooth(-0.17, 0.17, sky.toward);        // 0 = daytime picture, 1 = night picture
 
-    let cameraTween = null; // { from, to, fromTarget, t }
+      // Day: the Moon only shows where it covers the Sun (see sunMoonGap for how this is tied to the space view).
+      const gap = farSide ? 6 : Math.min(6, sunMoonGap(sky.off));
+      const look = solarLook(gap * r, r, r * GROUND.moonSize);
+      const coverage = look.coverage, dark = look.dark;
+      $g("ef-newmoon").setAttribute("cx", (cx + sky.sx * gap * r).toFixed(1));
+      $g("ef-newmoon").setAttribute("cy", (cy - sky.sy * gap * r).toFixed(1));
+      $g("ef-corona").setAttribute("opacity", look.corona.toFixed(3));
+      $g("ef-sunglow-c").setAttribute("opacity", look.glow.toFixed(3));
+      $g("ef-planet").setAttribute("opacity", look.planets.toFixed(3));
+      $g("ef-diamond").setAttribute("opacity", look.diamond.toFixed(3));
+      $g("ef-diamond").setAttribute("cx", (cx - sky.sx * r).toFixed(1)); // on the side not covered yet
+      $g("ef-diamond").setAttribute("cy", (cy + sky.sy * r).toFixed(1));
+      $g("ef-day").setAttribute("opacity", (1 - night).toFixed(3));
+
+      // Night: the sunny part of the Moon faces the Sun; Earth's shadow is 'earthRadius' wide on the same scale.
+      const rx = (r * Math.max(0, sky.toward)).toFixed(2), f = sky.side < 0 ? 1 : 0; // lit on the right or the left
+      $g("ef-lit").setAttribute("d", `M${cx} ${cy - r}A${r} ${r} 0 0 ${f} ${cx} ${cy + r}A${rx} ${r} 0 0 ${f} ${cx} ${cy - r}Z`);
+      const toSky = r / sizes.moonRadius;
+      $g("ef-umbra").setAttribute("cx", (farSide ? THREE.MathUtils.clamp(cx + sky.side * toSky, -300, 540) : 540).toFixed(1));
+      $g("ef-umbra").setAttribute("cy", (farSide ? THREE.MathUtils.clamp(cy + sky.up * toSky, -300, 400) : cy).toFixed(1));
+      $g("ef-umbra").setAttribute("r", (((sizes.earthRadius / sizes.moonRadius) * r) / GROUND.umbraEdge).toFixed(1));
+      $g("ef-red").setAttribute("opacity", (farSide ? state.redness : 0).toFixed(3));
+      $g("ef-night").setAttribute("opacity", night.toFixed(3));
+
+      $g("ef-stars").setAttribute("opacity", Math.max(night, look.stars).toFixed(3));
+      $g("ef-sky-top").setAttribute("stop-color", frameSky(0, dark, night));
+      $g("ef-sky-bottom").setAttribute("stop-color", frameSky(2, dark, night));
+      $g("ef-land").setAttribute("fill", mixHex(EF.land[0], EF.land[1], Math.max(dark, night)));
+
+      const inShadow = farSide && moonShadowDepth() > 0;
+      const status = coverage > 0 ? "Solar eclipse! 🌑" : inShadow ? "Lunar eclipse! 🌕" : night > 0.5 ? "Night-time 🌙" : "Daytime ☀️";
+      if (status !== earthFrame.status) { earthFrame.status = status; $g("ef-status").textContent = status; }
+    }
+
+    let cameraTween = null; // { fromDir, fromDist, turn, toDist, fromTarget, t }
     let cameraIsHome = true; // false once the child moves the camera themselves
+    const tweenTurn = new THREE.Quaternion();
 
+    /** Swing the camera around the scene (never straight through it) back to the home spot. */
     function resetView() {
       cameraIsHome = true;
+      zoomGoal = null;
+      const from = camera.position.clone().sub(controls.target);
+      const to = homeCameraPosition().sub(CONFIG.camera.target);
+      const fromDir = from.clone().normalize();
       cameraTween = {
-        from: camera.position.clone(),
-        to: homeCameraPosition(),
+        fromDir,
+        fromDist: from.length(),
+        turn: new THREE.Quaternion().setFromUnitVectors(fromDir, to.clone().normalize()),
+        toDist: to.length(),
         fromTarget: controls.target.clone(),
         t: CONFIG.reducedMotion ? 1 : 0,
       };
     }
+
+    /** The camera can fly all the way around and zoom in close, so nudge it back out if it would end up
+        inside the Sun, Earth or the Moon. */
+    const bodyGap = new THREE.Vector3();
+    function keepCameraOut(centre, keepOut) {
+      bodyGap.subVectors(camera.position, centre);
+      if (bodyGap.length() >= keepOut) return;
+      if (bodyGap.lengthSq() < 1e-6) bodyGap.subVectors(camera.position, controls.target); // dead centre: back away from the scene
+      camera.position.copy(centre).addScaledVector(bodyGap.normalize(), keepOut);
+      camera.lookAt(controls.target);
+    }
+    function keepCameraOutOfBodies() {
+      keepCameraOut(sun.position, CONFIG.sun.radius * sun.scale.x * 1.15);
+      keepCameraOut(earthSystem.position, CONFIG.earth.radius * 1.35);
+      keepCameraOut(moonShadowUniforms.uMoonPos.value, CONFIG.moon.radius * 1.8); // the Moon's place in the scene
+    }
+
+    /* ---------- ＋ / − zoom buttons ----------
+       Each tap glides the camera a step closer to, or further from, the middle of the scene
+       (the same zoom as the mouse wheel or a two-finger pinch). */
+    const zoomInBtn = document.getElementById("btn-zoom-in"), zoomOutBtn = document.getElementById("btn-zoom-out");
+    const zoomOffset = new THREE.Vector3();
+    let zoomGoal = null, zoomUntil = 0;
+    function zoomBy(factor) {
+      const from = zoomGoal ?? camera.position.distanceTo(controls.target);
+      zoomGoal = THREE.MathUtils.clamp(from * factor, controls.minDistance, controls.maxDistance);
+      zoomUntil = performance.now() + 900; // never fight a body the camera is not allowed inside for long
+      cameraTween = null;
+      cameraIsHome = false;
+    }
+    function updateZoom(dt) {
+      const dist = zoomOffset.subVectors(camera.position, controls.target).length();
+      if (zoomGoal !== null) {
+        let next = dist + (zoomGoal - dist) * (CONFIG.reducedMotion ? 1 : 1 - Math.exp(-9 * dt));
+        if (Math.abs(zoomGoal - next) < 0.03 || performance.now() > zoomUntil) { next = Math.abs(zoomGoal - next) < 0.03 ? zoomGoal : next; zoomGoal = null; }
+        camera.position.copy(controls.target).addScaledVector(zoomOffset.normalize(), next);
+      }
+      // Grey out a button at the end of its range.
+      const goal = zoomGoal ?? dist;
+      zoomInBtn.disabled = goal <= controls.minDistance + 0.05;
+      zoomOutBtn.disabled = goal >= controls.maxDistance - 0.05;
+    }
+    zoomInBtn.addEventListener("click", () => zoomBy(0.78));
+    zoomOutBtn.addEventListener("click", () => zoomBy(1 / 0.78));
     document.getElementById("btn-reset-view").addEventListener("click", resetView);
-    // Any manual camera move cancels a reset animation in progress.
-    controls.addEventListener("start", () => { cameraTween = null; cameraIsHome = false; });
+    // Any manual camera move cancels a reset or zoom animation in progress.
+    controls.addEventListener("start", () => { cameraTween = null; cameraIsHome = false; zoomGoal = null; });
 
     function onResize() {
       const w = window.innerWidth, h = window.innerHeight;
@@ -3428,12 +4209,18 @@
       Guides, SCRIPTS, reactions, LESSONS, startChapter,
       get lesson() { return { ...lesson, completed: [...lesson.completed] }; },
       get freePlay() { return { ...freePlay }; },
-      startFreePlay, resetProgress, saveProgress, setRealScale, setLearningMode,
-      get learning() { return { ...learning }; },
+      startFreePlay, resetProgress, saveProgress, setLearningMode, setRealScale,
+      get realScale() { return { ...realScale }; },
       /** Testing aid: finish the real-sizes animation right away. */
       skipScaleAnimation() { updateRealScale(1e3); },
+      get autoplay() { return { ...autoplay }; },
+      get orbitTilt() { return { node: orbitTilt.node, settled: orbitTilt.settled, on: orbitTilt.on, amount: orbitTilt.amount }; },
+      setOrbitTilt,
+      setNode(n) { orbitTilt.node = n; orbitTilt.settled = false; tiltMoved = true; },
+      setAutoplay, setMoonSpeed, setEarthFrame, resetView, setSunsetLight, zoomBy,
+      get moonShadowInShader() { return moonShadowInShader; },
+      get learning() { return { ...learning }; },
       get quality() { return { ...quality, pixelRatio: renderer.getPixelRatio(), shadowMap: sunLight.shadow.mapSize.x }; },
-      get realScale() { return { ...realScale }; },
       tapBody(body) { emit("bodytap", { body }); },
       events,
       THREE, scene, camera, renderer, controls, homeCameraPosition,
@@ -3485,9 +4272,12 @@
       const t = clock.elapsedTime;
 
       // While the ground view fully covers the screen, pause the 3D scene to save battery.
+      // (In the live view the Moon keeps travelling, so the big sky keeps changing.)
       if (ground.open) {
+        const covered = performance.now() >= groundCoveredAt;
+        if (covered && ground.type === "live") { updateMoon(dt); updateEclipseEffects(dt); }
         updateGround(dt);
-        if (performance.now() >= groundCoveredAt) {
+        if (covered) {
           requestAnimationFrame(tick);
           return;
         }
@@ -3499,6 +4289,7 @@
       updateEclipseEffects(dt);
       updateLightRays(dt);
       updateRealScale(dt);
+      updateSunsetLight(dt);
       updateFactLabels();
 
       if (!CONFIG.reducedMotion) {
@@ -3508,14 +4299,19 @@
       }
 
       if (cameraTween) {
-        cameraTween.t = Math.min(1, cameraTween.t + dt / 0.9);
-        const k = easeInOut(cameraTween.t);
-        camera.position.lerpVectors(cameraTween.from, cameraTween.to, k);
-        controls.target.lerpVectors(cameraTween.fromTarget, CONFIG.camera.target, k);
-        if (cameraTween.t >= 1) cameraTween = null;
+        const c = cameraTween;
+        c.t = Math.min(1, c.t + dt / 0.9);
+        const k = easeInOut(c.t);
+        controls.target.lerpVectors(c.fromTarget, CONFIG.camera.target, k);
+        camera.position.copy(c.fromDir).applyQuaternion(tweenTurn.identity().slerp(c.turn, k))
+          .multiplyScalar(lerp(c.fromDist, c.toDist, k)).add(controls.target);
+        if (c.t >= 1) cameraTween = null;
       }
 
+      updateZoom(dt);
       controls.update();
+      keepCameraOutOfBodies();
+      updateEarthFrame();
       renderer.render(scene, camera);
       requestAnimationFrame(tick);
     }
