@@ -299,7 +299,7 @@
       #btn-play .label { display: none; }
     }
 
-    /* ---------- Guides: Stella the Star and Captain Kai ---------- */
+    /* ---------- Guides: Proxima the Star and Captain Kai ---------- */
     #guide-dock {
       --dock-bottom: calc(max(16px, env(safe-area-inset-bottom)) + 92px);
       position: fixed;
@@ -319,11 +319,11 @@
 
     .guide-figure { position: relative; flex: 0 0 auto; width: 180px; height: 200px; }
     .guide-figure svg.fig { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-    .fig-stella { filter: drop-shadow(0 0 14px rgba(255, 210, 63, 0.85)); }
+    .fig-proxima { filter: drop-shadow(0 0 14px rgba(255, 128, 72, 0.85)); } /* red dwarf glow */
     .fig-kai { filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.35)); }
 
-    /* Idle life: Stella twinkles, Kai floats and waves */
-    .stella-body { transform-origin: 60px 64px; animation: twinkle 2.6s ease-in-out infinite; }
+    /* Idle life: Proxima twinkles, Kai floats and waves */
+    .proxima-body { transform-origin: 60px 64px; animation: twinkle 2.6s ease-in-out infinite; }
     @keyframes twinkle {
       0%, 100% { transform: scale(1) rotate(-3deg); }
       50%      { transform: scale(1.07) rotate(3deg); }
@@ -340,10 +340,10 @@
     }
 
     /* Entrances and exits */
-    #guide-dock.entering.side-left  .guide-figure { animation: stella-in 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+    #guide-dock.entering.side-left  .guide-figure { animation: proxima-in 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
     #guide-dock.entering.side-right .guide-figure { animation: kai-in 1s cubic-bezier(0.2, 0.8, 0.25, 1) both; }
     #guide-dock.entering .bubble { animation: bubble-in 0.45s 0.2s ease-out both; }
-    @keyframes stella-in {
+    @keyframes proxima-in {
       0%   { transform: translateX(-90px) scale(0.4) rotate(-40deg); opacity: 0; }
       70%  { transform: translateX(6px) scale(1.08) rotate(6deg); opacity: 1; }
       100% { transform: none; }
@@ -361,7 +361,7 @@
     #guide-dock.leaving.side-left  { transform: translateX(-40px); }
     #guide-dock.leaving.side-right { transform: translateX(40px); }
 
-    /* Sparkles around Stella when she arrives */
+    /* Sparkles around Proxima when she arrives */
     .sparkle { position: absolute; width: 30px; height: 30px; opacity: 0; pointer-events: none; }
     .sparkle svg { width: 100%; height: 100%; }
     #guide-dock.entering .sparkle { animation: sparkle 0.9s ease-out both; }
@@ -397,7 +397,7 @@
     .side-right .bubble::after { right: -20px; border-left-color: #fff; border-left-width: 14px; }
     .bubble.pop { animation: bubble-in 0.3s ease-out; }
     .bubble-name { font-size: 15px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #8a7fc4; }
-    .side-left .bubble-name { color: #d99400; }
+    .side-left .bubble-name { color: #d4582f; }
     .side-right .bubble-name { padding-left: 34px; } /* clear of the ✕ button */
     .bubble-body { display: flex; align-items: center; gap: 12px; }
     .bubble-icon { flex: 0 0 auto; width: 76px; }
@@ -471,7 +471,7 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .stella-body, .fig-kai, .kai-arm, .sparkle, #btn-next.ready { animation: none !important; }
+      .proxima-body, .fig-kai, .kai-arm, .sparkle, #btn-next.ready { animation: none !important; }
       #guide-dock.entering .guide-figure, #guide-dock.entering .bubble, .bubble.pop { animation: fade-in 0.2s both !important; }
       #guide-dock.leaving { transform: none !important; }
       @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
@@ -845,7 +845,7 @@
     </div>
     <button id="btn-learning" class="setting-row" type="button" aria-pressed="true">
       <span class="setting-icon" aria-hidden="true">🎓</span>
-      <span class="setting-text">Learning mode<small id="learning-sub">Lessons with Stella and Kai</small></span>
+      <span class="setting-text">Learning mode<small id="learning-sub">Lessons with Proxima and Kai</small></span>
       <span class="switch" aria-hidden="true"></span>
     </button>
     <button id="btn-earth-frame" class="setting-row" type="button" aria-pressed="true">
@@ -1067,14 +1067,15 @@
 
   </div>
 
-  <!-- Guides: one talks at a time. Stella docks bottom-left, Kai bottom-right. -->
+  <!-- Guides: one talks at a time. Proxima docks bottom-left, Kai bottom-right. -->
   <div id="guide-dock" class="side-right" hidden>
     <div class="guide-figure" aria-hidden="true">
-      <!-- Stella the Star (original character) -->
-      <svg class="fig fig-stella" viewBox="0 0 120 120">
-        <g class="stella-body">
-          <path d="M60.0,14.0 L73.5,45.4 L107.6,48.5 L81.9,71.1 L89.4,104.5 L60.0,87.0 L30.6,104.5 L38.1,71.1 L12.4,48.5 L46.5,45.4 Z" fill="#ffd23f" stroke="#ffb703" stroke-width="9" stroke-linejoin="round" />
-          <path d="M60 24 L66 44 Q60 40 54 44 Z" fill="#fff3b0" opacity="0.7" />
+      <!-- Proxima the Star (original character): Proxima Centauri, the closest star to the Sun:
+           a small red dwarf, so she glows orange-red. -->
+      <svg class="fig fig-proxima" viewBox="0 0 120 120">
+        <g class="proxima-body">
+          <path d="M60.0,14.0 L73.5,45.4 L107.6,48.5 L81.9,71.1 L89.4,104.5 L60.0,87.0 L30.6,104.5 L38.1,71.1 L12.4,48.5 L46.5,45.4 Z" fill="#ff8a4c" stroke="#e8603c" stroke-width="9" stroke-linejoin="round" />
+          <path d="M60 24 L66 44 Q60 40 54 44 Z" fill="#ffd2b0" opacity="0.7" />
           <ellipse cx="48" cy="62" rx="5.5" ry="7.5" fill="#3b2a5c" />
           <ellipse cx="72" cy="62" rx="5.5" ry="7.5" fill="#3b2a5c" />
           <circle cx="50" cy="59" r="2.2" fill="#fff" />
@@ -2203,7 +2204,7 @@
 
     /* =====================================================================
        GUIDES
-       Stella the Star (light things, docks left) and Captain Kai the
+       Proxima the Star (light things, docks left) and Captain Kai the
        Astronaut (being-there things, docks right). One talks at a time, one
        short sentence per bubble, with Next ➜, Explore more! 🔭 and 🔊.
 
@@ -2217,13 +2218,13 @@
        Guides.allowNext()          → show Next on a line that had next: false
 
        A line looks like:
-         { guide: "stella" | "kai", text, more, icon: "glasses",
+         { guide: "proxima" | "kai", text, more, icon: "glasses",
            lockSeconds: 2,            // Next can't be pressed before this
            next: false,               // hide Next until Guides.allowNext()
            actions: [{ label, onClick }] }
        ===================================================================== */
     const GUIDE_INFO = {
-      stella: { name: "Stella the Star", side: "left",  voice: { pitch: 1.6,  rate: 1.05 } },
+      proxima: { name: "Proxima the Star", side: "left",  voice: { pitch: 1.6,  rate: 1.05 } },
       kai:    { name: "Captain Kai",     side: "right", voice: { pitch: 1.15, rate: 0.92 } },
     };
     const ICONS = {
@@ -2269,7 +2270,7 @@
     const Guides = (() => {
       const $ = (id) => document.getElementById(id);
       const dock = $("guide-dock"), bubble = $("bubble");
-      const figStella = dock.querySelector(".fig-stella"), figKai = dock.querySelector(".fig-kai");
+      const figProxima = dock.querySelector(".fig-proxima"), figKai = dock.querySelector(".fig-kai");
       const nameEl = $("bubble-name"), textEl = $("bubble-text"), moreEl = $("bubble-more");
       const iconEl = $("bubble-icon"), actionsEl = $("bubble-actions"), extraEl = $("bubble-extra");
       const speakBtn = $("btn-speak"), moreBtn = $("btn-more"), nextBtn = $("btn-next");
@@ -2309,7 +2310,7 @@
           dock.hidden = false;
           dock.classList.remove("leaving", "entering", "side-left", "side-right");
           dock.classList.add(GUIDE_INFO[guide].side === "left" ? "side-left" : "side-right");
-          figStella.style.display = guide === "stella" ? "" : "none";
+          figProxima.style.display = guide === "proxima" ? "" : "none";
           figKai.style.display = guide === "kai" ? "" : "none";
           void dock.offsetWidth;          // restart the entrance animation
           dock.classList.add("entering");
@@ -2510,7 +2511,7 @@
        touching any logic.
 
        LESSONS is a list of chapters. Each chapter has steps shaped like:
-         { id, guide: "stella" | "kai", text, more,
+         { id, guide: "proxima" | "kai", text, more,
            action: null | "tapBodies" | "orbitOnce" | "alignSolar" | "alignLunar"
                    | "redMoon" | "groundSolar" | "groundLunar",
            optional: true,          // Next shows right away; the action is a bonus
@@ -2526,9 +2527,11 @@
         id: "family", icon: "☀️", title: "Meet the family",
         setup: ["hideShadowCones", "hideLightRays"],
         steps: [
-          { id: "hi-stella", guide: "stella", text: "Hi! I'm Stella. I'm a star, just like the Sun!",
-            more: "Of all the stars, the Sun is the closest one to Earth. That's why the Sun looks so big and bright." },
-          { id: "sun-light", guide: "stella", text: "The Sun is a star too. The Sun makes its own light!",
+          { id: "hi-proxima", guide: "proxima", text: "Hi! I'm Proxima, the star closest to the Sun!",
+            more: "My full name is Proxima Centauri. Proxima means 'closest'. The Sun and I are neighbor stars!" },
+          { id: "proxima-far", guide: "proxima", text: "I'm so far away, my light takes over 4 years to reach Earth!",
+            more: "I'm a small red star, smaller and cooler than the Sun. You need a telescope to see me in the night sky." },
+          { id: "sun-light", guide: "proxima", text: "The Sun is a star too. The Sun makes its own light!",
             more: "The Sun is a giant ball of super-hot, glowing gas. About a million Earths could fit inside the Sun!" },
           { id: "hi-kai", guide: "kai", text: "And I'm Captain Kai! This blue and green ball is Earth, our home.",
             more: "Earth spins around once every day. That spin gives us day and night." },
@@ -2544,18 +2547,18 @@
         id: "light", icon: "🔦", title: "Light and shadows",
         setup: ["hideShadowCones", "hideLightRays"],
         steps: [
-          { id: "light-out", guide: "stella", text: "Light shoots out of the Sun and zooms through space.",
+          { id: "light-out", guide: "proxima", text: "Light shoots out of the Sun and zooms through space.",
             more: "Sunlight is super fast! Sunlight takes about 8 minutes to travel from the Sun to Earth." },
-          { id: "straight", guide: "stella", text: "Light always travels in straight lines.", sceneEffect: "showLightRays",
+          { id: "straight", guide: "proxima", text: "Light always travels in straight lines.", sceneEffect: "showLightRays",
             more: "Light can't bend around corners by itself. That's why you can't see around a wall!" },
-          { id: "blocked", guide: "stella", text: "When something blocks the light, a shadow appears behind.",
+          { id: "blocked", guide: "proxima", text: "When something blocks the light, a shadow appears behind.",
             more: "On a sunny day, your body blocks sunlight too. That's how you get a shadow!" },
-          { id: "cones", guide: "stella", text: "These dark cones show the shadows of Earth and the Moon.",
+          { id: "cones", guide: "proxima", text: "These dark cones show the shadows of Earth and the Moon.",
             sceneEffect: ["showShadowCones", "hideLightRays"],
             more: "Space is dark, so we usually can't see shadows floating there. The cones are a helper drawing." },
-          { id: "moonlight", guide: "stella", text: "The Moon makes no light. Sunlight bounces off the Moon!",
+          { id: "moonlight", guide: "proxima", text: "The Moon makes no light. Sunlight bounces off the Moon!",
             more: "Moonlight is really sunlight that bounced off the Moon's gray rocks and came to Earth." },
-          { id: "light-done", guide: "stella", text: "Remember: an eclipse is a shadow falling on something!",
+          { id: "light-done", guide: "proxima", text: "Remember: an eclipse is a shadow falling on something!",
             more: "In a solar eclipse, the Moon's shadow falls on Earth. In a lunar eclipse, Earth's shadow falls on the Moon." },
         ],
       },
@@ -2604,11 +2607,11 @@
             more: "Move the Moon to the far side of Earth, away from the Sun." },
           { id: "lunar-shadow", guide: "kai", text: "You did it! The Moon is inside Earth's shadow.",
             more: "A lunar eclipse only happens at full moon, when the Moon is on the far side of Earth." },
-          { id: "lunar-watch", guide: "stella", text: "Keep watching the Moon…", action: "redMoon",
+          { id: "lunar-watch", guide: "proxima", text: "Keep watching the Moon…", action: "redMoon",
             more: "Earth's shadow is big, so the Moon stays inside the shadow for a long time." },
-          { id: "lunar-red", guide: "stella", text: "Look! The Moon turned red!",
+          { id: "lunar-red", guide: "proxima", text: "Look! The Moon turned red!",
             more: "The Moon doesn't go completely dark. A little sunlight still reaches the Moon." },
-          { id: "lunar-why", guide: "stella", text: "Earth's air bends some sunlight onto the Moon, like a sunset!",
+          { id: "lunar-why", guide: "proxima", text: "Earth's air bends some sunlight onto the Moon, like a sunset!",
             sceneEffect: "showSunsetLight",
             more: "Air bounces blue light away and lets red light through. During a lunar eclipse, light from all the sunsets around Earth shines on the Moon!" },
           { id: "lunar-ground", guide: "kai", text: "Want to see the red Moon from Earth?", action: "groundLunar", optional: true,
@@ -2733,9 +2736,9 @@
           more: "A lunar eclipse can only happen at full moon. The Moon's path is a little tilted, so most months the Moon passes just above or below Earth's shadow." },
       ],
       redMoon: [
-        { guide: "stella", text: "Look! The Moon is turning red!",
+        { guide: "proxima", text: "Look! The Moon is turning red!",
           more: "The Moon doesn't go completely dark. A little sunlight still reaches the Moon." },
-        { guide: "stella", text: "Earth's air bends some sunlight onto the Moon, like a sunset!",
+        { guide: "proxima", text: "Earth's air bends some sunlight onto the Moon, like a sunset!",
           more: "Air bounces blue light away and lets red light through. That's why sunsets look red. During a lunar eclipse, light from all the sunsets around Earth shines on the Moon!" },
       ],
       solarSafety: [
@@ -2766,8 +2769,16 @@
           more: "Earth's shadow covers the Moon. Keep watching: the Moon will turn red!" },
       ],
       freeRed: [
-        { guide: "stella", text: "The Moon turned red, like a sunset!",
+        { guide: "proxima", text: "The Moon turned red, like a sunset!",
           more: "Earth's air bends a little red sunlight onto the Moon. That's why the Moon glows red instead of going dark." },
+      ],
+      realSizes: [
+        { guide: "kai", text: "Space is really, really big!",
+          more: "The Moon is about 384,000 km away from Earth. About 30 Earths could fit in the gap between Earth and the Moon!" },
+        { guide: "proxima", text: "The Sun is so big that 109 Earths could line up across the Sun!",
+          more: "The real Sun is also much farther away: about 400 times farther than the Moon. That's too far to fit on any screen!" },
+        { guide: "kai", text: "Tap the 🔭 button again to go back to the friendly view.",
+          more: "The friendly view makes everything bigger and closer, so eclipses are easier to see. Lessons wait until you come back." },
       ],
       lunarSafe: [
         { guide: "kai", text: "Watching a lunar eclipse is safe. You don't need glasses!",
@@ -3110,7 +3121,7 @@
     function refreshLearningUI() {
       learningBtn.setAttribute("aria-pressed", String(learning.on));
       document.getElementById("learning-sub").textContent = learning.on
-        ? "Lessons with Stella and Kai" : "Explore freely, no lessons";
+        ? "Lessons with Proxima and Kai" : "Explore freely, no lessons";
     }
 
     function enterExplore({ greet = true } = {}) {
