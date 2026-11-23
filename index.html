@@ -709,6 +709,21 @@
       .ef-caption span { font-size: 11px; }
     }
 
+    /* ---------- Credits: a faint fixed line along the very bottom edge, under the controls ---------- */
+    #credits {
+      position: fixed;
+      z-index: 3;
+      left: 50%;
+      bottom: max(1px, calc(env(safe-area-inset-bottom) - 14px));
+      transform: translateX(-50%);
+      font-size: 11px;
+      line-height: 14px;
+      color: #fff;
+      opacity: 0.4;
+      white-space: nowrap;
+      pointer-events: none;
+      user-select: none;
+    }
     /* ---------- Real-sizes toggle (bottom-left); its small top line is the "Not to scale" label ---------- */
     #btn-scale {
       position: fixed;
@@ -875,6 +890,8 @@
     </svg>
     <span class="ef-caption"><b>🌍 View from Earth</b><span id="ef-status">Daytime ☀️</span></span>
   </button>
+
+  <div id="credits">Created by Lucas and Wijdan</div>
 
   <button id="btn-scale" class="btn" type="button" aria-pressed="false">
     <span class="scale-note" id="scale-note">Not to scale</span>
